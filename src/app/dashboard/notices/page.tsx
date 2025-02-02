@@ -34,9 +34,6 @@ export default function NoticePage() {
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>
-        Manage Notices
-      </Typography>
       <Button
         component={Link}
         href="/dashboard/admin/notices/create"

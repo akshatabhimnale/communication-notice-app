@@ -1,5 +1,4 @@
-import PageContent from "@/components/PageContent";
-
+import Typography from "@mui/material/Typography";
 export default function DashboardPage() {
-  return <PageContent title="Dashboard" />;
+  return <Typography>Welcome to Toolpad, </Typography>;
 }

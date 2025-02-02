@@ -14,11 +14,12 @@ const NAVIGATION: Navigation = [
   {
     title: "Dashboard",
     icon: <DashboardIcon />,
+    segment: "dashboard",
   },
   {
-    segment: "notices",
-    title: "Notice Type",
+    title: "Notice Types",
     icon: <AssignmentIcon />,
+    segment: "dashboard/notices",
   },
 ];
 
