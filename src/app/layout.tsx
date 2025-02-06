@@ -4,7 +4,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import type { Navigation } from "@toolpad/core/AppProvider";
-import ReduxProvider from "@/store/Provider"; // Import your Redux Provider
+import ReduxProvider from "@/store/Provider";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 const NAVIGATION: Navigation = [
   {
@@ -14,12 +14,12 @@ const NAVIGATION: Navigation = [
   {
     title: "Dashboard",
     icon: <DashboardIcon />,
-    segment: "dashboard",
+    segment: "",
   },
   {
     title: "Notice Types",
     icon: <AssignmentIcon />,
-    segment: "dashboard/notices",
+    segment: "notices",
   },
 ];
 
