@@ -1,4 +1,11 @@
-import apiClient from "./apiClient";
+import authApiClient, { setAuthToken } from "./apiClients/authApiClient";
+import { setTokens, logout as logoutAction } from "@/store/slices/authSlice";
+import { AppDispatch } from "@/store";
+
+export interface LoginPayload {
+  username: string;
+  password: string;
+}
 
 export interface RegisterPayload {
   username: string;
@@ -13,7 +20,63 @@ export interface RegisterPayload {
   organization_phone?: string;
 }
 
-export interface LoginPayload {
-  email: string;
-  password: string;
-}
+export const login = async (dispatch: AppDispatch, data: LoginPayload) => {
+  try {
+    const response = await authApiClient.post("/login/", data);
+
+    const { access, refresh } = response.data;
+
+    document.cookie = `accessToken=${access}; path=/; Secure`;
+    setAuthToken(access);
+    dispatch(setTokens({ accessToken: access, refreshToken: refresh }));
+
+    return response.data;
+  } catch (error: any) {
+    console.error(
+      "❌ Login Failed:",
+      error.response?.data?.detail || "Unknown error"
+    );
+    throw new Error(
+      error.response?.data?.detail || "Invalid username or password"
+    );
+  }
+};
+
+export const register = async (data: RegisterPayload) => {
+  try {
+    const response = await authApiClient.post("/register/", data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const refreshToken = async (
+  dispatch: AppDispatch,
+  refreshToken: string
+) => {
+  try {
+    const response = await authApiClient.post("/token/refresh/", {
+      refresh: refreshToken,
+    });
+
+    setAuthToken(response.data.access);
+    dispatch(setTokens({ accessToken: response.data.access, refreshToken }));
+
+    return response.data.access;
+  } catch (error) {
+    dispatch(logoutAction());
+    throw error;
+  }
+};
+
+export const logout = async (dispatch: AppDispatch) => {
+  try {
+    await authApiClient.post("/auth/logout/");
+
+    setAuthToken(null);
+    dispatch(logoutAction());
+  } catch (error) {
+    throw error;
+  }
+};
