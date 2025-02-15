@@ -3,7 +3,10 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
-import { fetchNoticesThunk, deleteNoticeThunk } from "@/store/noticeSlice";
+import {
+  fetchNoticesThunk,
+  deleteNoticeThunk,
+} from "@/store/slices/noticeSlice";
 import {
   Table,
   TableBody,

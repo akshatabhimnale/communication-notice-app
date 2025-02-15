@@ -3,7 +3,10 @@
 import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store";
-import { createNoticeThunk, updateNoticeThunk } from "@/store/noticeSlice";
+import {
+  createNoticeThunk,
+  updateNoticeThunk,
+} from "@/store/slices/noticeSlice";
 import { TextField, Button, Box, Paper } from "@mui/material";
 const defaultLegalTemplate = `
 <b>NOTICE OF AGREEMENT</b><br/><br/>
