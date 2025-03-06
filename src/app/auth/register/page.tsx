@@ -22,18 +22,18 @@ import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
-function Copyright(props: any) {
-  return (
-    <Typography variant="body2" color="text.secondary" align="center" {...props}>
-      {'Copyright © '}
-      <Link color="inherit" href="https://mui.com/">
-        Your Website
-      </Link>{' '}
-      {new Date().getFullYear()}
-      {'.'}
-    </Typography>
-  );
-}
+// function Copyright(props: any) {
+//   return (
+//     <Typography variant="body2" color="text.secondary" align="center" {...props}>
+//       {'Copyright © '}
+//       <Link color="inherit" href="https://mui.com/">
+//         Your Website
+//       </Link>{' '}
+//       {new Date().getFullYear()}
+//       {'.'}
+//     </Typography>
+//   );
+// }
 
 const defaultTheme = createTheme();
 
@@ -67,16 +67,19 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-
+  
     try {
       await dispatch(registerThunk(formData)).unwrap();
-      router.push("/auth/login");
+  
+      // Redirect to login page after successful registration
+      router.replace("/auth/login"); 
     } catch (err: any) {
       setError(err || "Registration failed");
     } finally {
       setLoading(false);
     }
   };
+  
 
   return (
     <ThemeProvider theme={defaultTheme}>
@@ -243,7 +246,7 @@ export default function RegisterPage() {
             </Grid>
           </Box>
         </Box>
-        <Copyright sx={{ mt: 5 }} />
+        {/* <Copyright sx={{ mt: 5 }} /> */}
       </Container>
     </ThemeProvider>
   );

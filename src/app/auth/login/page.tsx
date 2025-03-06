@@ -7,7 +7,7 @@ import { loginThunk } from "@/store/slices/authSlice";
 import { RootState } from "@/store";
 import Link from "next/link";
 
-import { Avatar, Button, Container, CssBaseline, Grid, TextField, Typography, Box } from "@mui/material";
+import { Avatar, Button, Container, CssBaseline, TextField, Typography, Box, Stack } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
 
 export default function LoginPage() {
@@ -32,13 +32,8 @@ export default function LoginPage() {
   return (
     <Container component="main" maxWidth="xs">
       <CssBaseline />
-      <Grid container justifyContent="center" alignItems="center" style={{ minHeight: "100vh" }}>
-        <Box
-          sx={{
-            width: "100%",
-            textAlign: "center",
-          }}
-        >
+      <Stack justifyContent="center" alignItems="center" sx={{ minHeight: "100vh" }}>
+        <Box sx={{ width: "100%", textAlign: "center" }}>
           <Avatar sx={{ bgcolor: "purple", mx: "auto", mb: 1 }}>
             <LockIcon />
           </Avatar>
@@ -64,27 +59,20 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              color="primary"
-              sx={{ mt: 2 }}
-              disabled={loading}
-            >
+            <Button fullWidth type="submit" variant="contained" color="primary" sx={{ mt: 2 }} disabled={loading}>
               {loading ? "Signing in..." : "SIGN IN"}
             </Button>
             {error && <Typography color="error" sx={{ mt: 1 }}>⚠️ {error}</Typography>}
-            <Grid container justifyContent="center" sx={{ mt: 2 }}>
+            <Stack direction="row" justifyContent="center" sx={{ mt: 2 }}>
               <Typography variant="body2">
                 <Link href="/auth/register" style={{ textDecoration: "none", color: "#1976D2", fontWeight: "bold" }}>
                   Don't have an account? <span style={{ color: "#1976D2" }}>Sign Up</span>
                 </Link>
               </Typography>
-            </Grid>
+            </Stack>
           </form>
         </Box>
-      </Grid>
+      </Stack>
     </Container>
   );
 }
