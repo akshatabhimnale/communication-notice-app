@@ -1,11 +1,13 @@
-import ReduxProvider from '@/store/Provider';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
-import { NextAppProvider } from '@toolpad/core/nextjs';
-import * as React from 'react';
+import ReduxProvider from "@/store/Provider";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
+import { NextAppProvider } from "@toolpad/core/nextjs";
+import * as React from "react";
+import { Suspense } from "react";
 
 import type { Navigation } from "@toolpad/core/AppProvider";
+
 const NAVIGATION: Navigation = [
   {
     kind: "header",
@@ -33,9 +35,11 @@ export default function RootLayout(props: { children: React.ReactNode }) {
       <body>
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <ReduxProvider>
-            <NextAppProvider navigation={NAVIGATION} branding={BRANDING}>
-              {props.children}
-            </NextAppProvider>
+            <Suspense fallback={<div>Loading layout...</div>}>
+              <NextAppProvider navigation={NAVIGATION} branding={BRANDING}>
+                {props.children}
+              </NextAppProvider>
+            </Suspense>
           </ReduxProvider>
         </AppRouterCacheProvider>
       </body>

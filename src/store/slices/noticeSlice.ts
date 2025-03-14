@@ -1,5 +1,11 @@
-import { createNotice, deleteNotice, fetchNotices, Notice, updateNotice } from '@/services/noticeService';
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import {
+  createNotice,
+  deleteNotice,
+  fetchNotices,
+  Notice,
+  updateNotice,
+} from "@/services/noticeService";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface NoticeState {
   notices: Notice[];
@@ -18,9 +24,10 @@ export const fetchNoticesThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       return await fetchNotices();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: string } };
       return rejectWithValue(
-        error.response?.data || "Failed to fetch notice-types"
+        err.response?.data || "Failed to fetch notice-types"
       );
     }
   }
@@ -31,9 +38,10 @@ export const createNoticeThunk = createAsyncThunk(
   async (data: Notice, { rejectWithValue }) => {
     try {
       return await createNotice(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: string } };
       return rejectWithValue(
-        error.response?.data || "Failed to create notice-type"
+        err.response?.data || "Failed to create notice-type"
       );
     }
   }
@@ -44,9 +52,10 @@ export const updateNoticeThunk = createAsyncThunk(
   async ({ id, data }: { id: string; data: Notice }, { rejectWithValue }) => {
     try {
       return await updateNotice(id, data);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: string } };
       return rejectWithValue(
-        error.response?.data || "Failed to update notice-type"
+        err.response?.data || "Failed to update notice-type"
       );
     }
   }
@@ -58,9 +67,10 @@ export const deleteNoticeThunk = createAsyncThunk(
     try {
       await deleteNotice(id);
       return id;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: string } };
       return rejectWithValue(
-        error.response?.data || "Failed to delete notice-type"
+        err.response?.data || "Failed to delete notice-type"
       );
     }
   }
