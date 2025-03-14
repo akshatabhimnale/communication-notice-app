@@ -1,7 +1,6 @@
-import { AppDispatch } from '@/store';
-import { logout as logoutAction, setTokens } from '@/store/slices/authSlice';
-
-import authApiClient, { setAuthToken } from './apiClients/authApiClient';
+import authApiClient, { setAuthToken } from "./apiClients/authApiClient";
+import { setTokens, logout as logoutAction } from "@/store/slices/authSlice";
+import { AppDispatch } from "@/store";
 
 export interface LoginPayload {
   username: string;
@@ -21,16 +20,9 @@ export interface RegisterPayload {
   organization_phone?: string;
 }
 
-export const login = async (dispatch: AppDispatch, data: LoginPayload) => {
+export const login = async (data: LoginPayload) => {
   try {
     const response = await authApiClient.post("/login/", data);
-
-    const { access, refresh } = response.data;
-
-    document.cookie = `accessToken=${access}; path=/; Secure`;
-    setAuthToken(access);
-    dispatch(setTokens({ accessToken: access, refreshToken: refresh }));
-
     return response.data;
   } catch (error: any) {
     console.error(

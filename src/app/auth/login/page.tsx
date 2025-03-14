@@ -4,12 +4,14 @@ import { RootState } from "@/store";
 import { loginThunk } from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
+import { useAppDispatch } from "@/store/hooks";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const dispatch = useDispatch<any>();
+  const dispatch = useAppDispatch();
+  // const { user, loading, error } = useAppSelector((state) => state.auth);
   const router = useRouter();
 
   const { user, loading, error } = useSelector(
@@ -24,7 +26,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(loginThunk({ dispatch, data: { username, password } }));
+    dispatch(loginThunk({ username, password }));
   };
 
   return (

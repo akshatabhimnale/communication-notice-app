@@ -1,3 +1,4 @@
+import { setAuthToken } from "@/services/apiClients/authApiClient";
 import {
   login,
   LoginPayload,
@@ -5,8 +6,8 @@ import {
   refreshToken,
   register,
   RegisterPayload,
-} from '@/services/authService';
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+} from "@/services/authService";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface User {
   id: number;
@@ -36,12 +37,14 @@ const initialState: AuthState = {
 
 export const loginThunk = createAsyncThunk(
   "auth/login",
-  async (
-    { dispatch, data }: { dispatch: any; data: LoginPayload },
-    { rejectWithValue }
-  ) => {
+  async (data: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
-      return await login(dispatch, data);
+      const response = await login(data);
+      const { access, refresh, user } = response;
+      document.cookie = `accessToken=${access}; path=/; Secure`;
+      setAuthToken(access);
+      dispatch(setTokens({ accessToken: access, refreshToken: refresh }));
+      return { user, access, refresh };
     } catch (error: any) {
       return rejectWithValue(error.response?.data || "Failed to login");
     }
