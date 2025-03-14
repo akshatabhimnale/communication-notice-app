@@ -2,7 +2,6 @@ import * as React from "react";
 import { NextAppProvider } from "@toolpad/core/nextjs";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import type { Navigation } from "@toolpad/core/AppProvider";
 import ReduxProvider from "@/store/Provider";
 import AssignmentIcon from "@mui/icons-material/Assignment";

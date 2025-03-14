@@ -4,17 +4,17 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { loginThunk } from "@/store/slices/authSlice";
-import { RootState } from "@/store";
+import { RootState, AppDispatch } from "@/store"; // ✅ Import correct dispatch type
+import { LoginPayload } from "@/services/authService";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const dispatch = useDispatch<any>();
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+
+  const dispatch = useDispatch<AppDispatch>(); // ✅ Correctly typed dispatch
   const router = useRouter();
 
-  const { user, loading, error } = useSelector(
-    (state: RootState) => state.auth
-  );
+  const { user, loading, error } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     if (user) {
@@ -24,7 +24,9 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(loginThunk({ dispatch, data: { username, password } }));
+    
+    const payload: LoginPayload = { username, password };
+    await dispatch(loginThunk({ dispatch, data: payload })); // ✅ Correctly typed dispatch
   };
 
   return (
@@ -49,7 +51,7 @@ export default function LoginPage() {
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
-      {error && <p>⚠️ {error}</p>}
+      {error && <p style={{ color: "red" }}>⚠️ {error}</p>}
     </div>
   );
 }

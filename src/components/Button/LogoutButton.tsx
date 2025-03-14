@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
-import { logout } from "@/services/authService";
 import { logout as logoutAction } from "@/store/slices/authSlice";
 
 export default function LogoutButton() {

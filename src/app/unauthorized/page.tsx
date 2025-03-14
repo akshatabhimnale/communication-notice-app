@@ -16,7 +16,7 @@ export default function UnauthorizedPage() {
 
   return (
     <div style={{ textAlign: "center", marginTop: "50px" }}>
-      <h1>🚫 Oops! 👀 Nope, this isn't for your eyes </h1>
+      <h1>🚫 Oops! 👀 Nope, this isn&apos;t for your eyes </h1>
       <p>Error 403</p>
       <button onClick={() => router.push("/")}>Go to Dashboard</button>
     </div>

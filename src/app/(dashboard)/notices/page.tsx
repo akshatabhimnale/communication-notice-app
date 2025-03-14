@@ -17,7 +17,6 @@ import {
   Paper,
   Button,
   Container,
-  Typography,
 } from "@mui/material";
 import Link from "next/link";
 

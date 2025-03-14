@@ -20,9 +20,25 @@ export interface RegisterPayload {
   organization_phone?: string;
 }
 
-export const login = async (dispatch: AppDispatch, data: LoginPayload) => {
+interface AuthResponse {
+  access: string;
+  refresh: string;
+}
+
+interface ApiError {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
+export const login = async (
+  dispatch: AppDispatch,
+  data: LoginPayload
+): Promise<AuthResponse> => {
   try {
-    const response = await authApiClient.post("/login/", data);
+    const response = await authApiClient.post<AuthResponse>("/login/", data);
 
     const { access, refresh } = response.data;
 
@@ -31,21 +47,21 @@ export const login = async (dispatch: AppDispatch, data: LoginPayload) => {
     dispatch(setTokens({ accessToken: access, refreshToken: refresh }));
 
     return response.data;
-  } catch (error: any) {
+  } catch (error) {
+    const apiError = error as ApiError;
     console.error(
       "❌ Login Failed:",
-      error.response?.data?.detail || "Unknown error"
+      apiError.response?.data?.detail || "Unknown error"
     );
     throw new Error(
-      error.response?.data?.detail || "Invalid username or password"
+      apiError.response?.data?.detail || "Invalid username or password"
     );
   }
 };
 
-export const register = async (data: RegisterPayload) => {
+export const register = async (data: RegisterPayload): Promise<void> => {
   try {
-    const response = await authApiClient.post("/register/", data);
-    return response.data;
+    await authApiClient.post("/register/", data);
   } catch (error) {
     throw error;
   }
@@ -54,11 +70,12 @@ export const register = async (data: RegisterPayload) => {
 export const refreshToken = async (
   dispatch: AppDispatch,
   refreshToken: string
-) => {
+): Promise<string> => {
   try {
-    const response = await authApiClient.post("/token/refresh/", {
-      refresh: refreshToken,
-    });
+    const response = await authApiClient.post<{ access: string }>(
+      "/token/refresh/",
+      { refresh: refreshToken }
+    );
 
     setAuthToken(response.data.access);
     dispatch(setTokens({ accessToken: response.data.access, refreshToken }));
@@ -70,7 +87,7 @@ export const refreshToken = async (
   }
 };
 
-export const logout = async (dispatch: AppDispatch) => {
+export const logout = async (dispatch: AppDispatch): Promise<void> => {
   try {
     await authApiClient.post("/auth/logout/");
 

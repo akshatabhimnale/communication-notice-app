@@ -4,7 +4,7 @@ import {
   createNotice,
   updateNotice,
   deleteNotice,
-  Notice,
+  Notice, // ✅ Importing the Notice interface
 } from "@/services/noticeService";
 
 interface NoticeState {
@@ -24,9 +24,10 @@ export const fetchNoticesThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       return await fetchNotices();
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data || "Failed to fetch notice-types"
+        (error as { response?: { data?: string } })?.response?.data ||
+          "Failed to fetch notices"
       );
     }
   }
@@ -37,9 +38,10 @@ export const createNoticeThunk = createAsyncThunk(
   async (data: Notice, { rejectWithValue }) => {
     try {
       return await createNotice(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data || "Failed to create notice-type"
+        (error as { response?: { data?: string } })?.response?.data ||
+          "Failed to create notice"
       );
     }
   }
@@ -50,9 +52,10 @@ export const updateNoticeThunk = createAsyncThunk(
   async ({ id, data }: { id: string; data: Notice }, { rejectWithValue }) => {
     try {
       return await updateNotice(id, data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data || "Failed to update notice-type"
+        (error as { response?: { data?: string } })?.response?.data ||
+          "Failed to update notice"
       );
     }
   }
@@ -64,9 +67,10 @@ export const deleteNoticeThunk = createAsyncThunk(
     try {
       await deleteNotice(id);
       return id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data || "Failed to delete notice-type"
+        (error as { response?: { data?: string } })?.response?.data ||
+          "Failed to delete notice"
       );
     }
   }
