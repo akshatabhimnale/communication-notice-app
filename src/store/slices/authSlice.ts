@@ -2,7 +2,6 @@ import { setAuthToken } from "@/services/apiClients/authApiClient";
 import {
   login,
   LoginPayload,
-  logout as logoutService,
   refreshToken,
   register,
   RegisterPayload,
@@ -45,8 +44,9 @@ export const loginThunk = createAsyncThunk(
       setAuthToken(access);
       dispatch(setTokens({ accessToken: access, refreshToken: refresh }));
       return { user, access, refresh };
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data || "Failed to login");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: string } };
+      return rejectWithValue(err.response?.data || "Failed to login");
     }
   }
 );
@@ -56,33 +56,40 @@ export const registerThunk = createAsyncThunk(
   async (data: RegisterPayload, { rejectWithValue }) => {
     try {
       return await register(data);
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data || "Failed to register");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: string } };
+      return rejectWithValue(err.response?.data || "Failed to register");
     }
   }
 );
 
 export const refreshTokenThunk = createAsyncThunk(
   "auth/refreshToken",
-  async (
-    { dispatch, token }: { dispatch: any; token: string },
-    { rejectWithValue }
-  ) => {
+  async (token: string, { dispatch, rejectWithValue }) => {
     try {
-      return await refreshToken(dispatch, token);
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data || "Failed to refresh token");
+      const accessToken = await refreshToken(token);
+      setAuthToken(accessToken);
+      dispatch(setTokens({ accessToken, refreshToken: token }));
+
+      return accessToken;
+    } catch (error: unknown) {
+      const err = error as Error;
+      dispatch(logout());
+      return rejectWithValue(err.message || "Failed to refresh token");
     }
   }
 );
 
 export const logoutThunk = createAsyncThunk(
   "auth/logout",
-  async (dispatch: any, { rejectWithValue }) => {
+  async (_: void, { dispatch, rejectWithValue }) => {
     try {
-      return await logoutService(dispatch);
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data || "Failed to logout");
+      await logout();
+      setAuthToken(null);
+      dispatch(logout());
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: string } };
+      return rejectWithValue(err.response?.data || "Failed to logout");
     }
   }
 );

@@ -1,7 +1,4 @@
 import authApiClient, { setAuthToken } from "./apiClients/authApiClient";
-import { setTokens, logout as logoutAction } from "@/store/slices/authSlice";
-import { AppDispatch } from "@/store";
-
 export interface LoginPayload {
   username: string;
   password: string;
@@ -24,14 +21,12 @@ export const login = async (data: LoginPayload) => {
   try {
     const response = await authApiClient.post("/login/", data);
     return response.data;
-  } catch (error: any) {
-    console.error(
-      "❌ Login Failed:",
-      error.response?.data?.detail || "Unknown error"
-    );
-    throw new Error(
-      error.response?.data?.detail || "Invalid username or password"
-    );
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { detail?: string } } };
+    const message =
+      err.response?.data?.detail || "Invalid username or password";
+    console.error("❌ Login Failed:", message);
+    throw new Error(message);
   }
 };
 
@@ -44,31 +39,24 @@ export const register = async (data: RegisterPayload) => {
   }
 };
 
-export const refreshToken = async (
-  dispatch: AppDispatch,
-  refreshToken: string
-) => {
+export const refreshToken = async (refreshToken: string): Promise<string> => {
   try {
     const response = await authApiClient.post("/token/refresh/", {
       refresh: refreshToken,
     });
 
     setAuthToken(response.data.access);
-    dispatch(setTokens({ accessToken: response.data.access, refreshToken }));
 
     return response.data.access;
-  } catch (error) {
-    dispatch(logoutAction());
-    throw error;
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: string } };
+    throw new Error(err.response?.data || "Failed to refresh token");
   }
 };
 
-export const logout = async (dispatch: AppDispatch) => {
+export const logout = async (): Promise<void> => {
   try {
     await authApiClient.post("/auth/logout/");
-
-    setAuthToken(null);
-    dispatch(logoutAction());
   } catch (error) {
     throw error;
   }

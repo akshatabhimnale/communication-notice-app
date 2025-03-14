@@ -4,7 +4,7 @@ import { RegisterPayload } from "@/services/authService";
 import { registerThunk } from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useDispatch } from "react-redux";
+import { useAppDispatch } from "@/store/hooks";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterPayload>({
@@ -20,7 +20,7 @@ export default function RegisterPage() {
     organization_phone: "",
   });
 
-  const dispatch = useDispatch<any>();
+  const dispatch = useAppDispatch();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -39,8 +39,10 @@ export default function RegisterPage() {
     try {
       await dispatch(registerThunk(formData)).unwrap();
       router.push("/auth/login");
-    } catch (err: any) {
-      setError(err || "Registration failed");
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Registration failed";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
