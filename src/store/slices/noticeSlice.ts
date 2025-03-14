@@ -1,11 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import {
-  fetchNotices,
-  createNotice,
-  updateNotice,
-  deleteNotice,
-  Notice,
-} from "@/services/noticeService";
+import { createNotice, deleteNotice, fetchNotices, Notice, updateNotice } from '@/services/noticeService';
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface NoticeState {
   notices: Notice[];

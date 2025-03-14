@@ -1,5 +1,4 @@
-import * as React from "react";
-import { DashboardLayout } from "@toolpad/core/DashboardLayout";
+import * as React from 'react';
 
 export default async function DashboardPagesLayout(props: {
   children: React.ReactNode;

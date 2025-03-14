@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useRouter } from "next/navigation";
-import { loginThunk } from "@/store/slices/authSlice";
 import { RootState } from "@/store";
+import { loginThunk } from "@/store/slices/authSlice";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");

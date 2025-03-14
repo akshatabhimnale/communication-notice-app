@@ -1,13 +1,12 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-
 import {
   login,
-  register,
-  refreshToken,
-  logout as logoutService,
   LoginPayload,
+  logout as logoutService,
+  refreshToken,
+  register,
   RegisterPayload,
-} from "@/services/authService";
+} from '@/services/authService';
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface User {
   id: number;

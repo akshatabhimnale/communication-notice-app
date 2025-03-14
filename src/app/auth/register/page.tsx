@@ -1,9 +1,10 @@
 "use client";
+
+import { RegisterPayload } from "@/services/authService";
+import { registerThunk } from "@/store/slices/authSlice";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { useRouter } from "next/navigation";
-import { registerThunk } from "@/store/slices/authSlice";
-import { RegisterPayload } from "@/services/authService";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterPayload>({

@@ -1,6 +1,5 @@
-import axios from "axios";
-import { store } from "@/store";
-import { setTokens, logout } from "@/store/slices/authSlice";
+import { store } from '@/store';
+import axios from 'axios';
 
 const api = axios.create({
   baseURL: "http://localhost:8000/api/v1",

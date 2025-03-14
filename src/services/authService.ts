@@ -1,6 +1,7 @@
-import authApiClient, { setAuthToken } from "./apiClients/authApiClient";
-import { setTokens, logout as logoutAction } from "@/store/slices/authSlice";
-import { AppDispatch } from "@/store";
+import { AppDispatch } from '@/store';
+import { logout as logoutAction, setTokens } from '@/store/slices/authSlice';
+
+import authApiClient, { setAuthToken } from './apiClients/authApiClient';
 
 export interface LoginPayload {
   username: string;

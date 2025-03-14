@@ -1,25 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
 import {
-  fetchNoticesThunk,
   deleteNoticeThunk,
+  fetchNoticesThunk,
 } from "@/store/slices/noticeSlice";
 import {
+  Button,
+  Container,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Button,
-  Container,
-  Typography,
 } from "@mui/material";
 import Link from "next/link";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
 export default function NoticePage() {
   const dispatch = useDispatch<AppDispatch>();
