@@ -17,6 +17,7 @@ import {
   Box,
   Typography,
   Container,
+  useTheme,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 
@@ -25,6 +26,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const theme = useTheme();
 
   const { user, loading, error } = useSelector(
     (state: RootState) => state.auth
@@ -48,7 +50,8 @@ export default function LoginPage() {
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
-        bgcolor: "#f5f5f5", // Light background color
+        backgroundColor: theme.palette.background.default,
+        color: theme.palette.text.primary,
       }}
     >
       <Container component="main" maxWidth="xs">
@@ -108,11 +111,8 @@ export default function LoginPage() {
             </Typography>
           )}
           <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-            <Link href="#" variant="body2">
-              Forgot password?
-            </Link>
             <Link href="/auth/register" variant="body2">
-              {"Don&apos;t have an account? Sign Up"}
+              {"Don't have an account? Sign Up"}
             </Link>
           </Box>
         </Box>

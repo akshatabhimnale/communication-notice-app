@@ -6,16 +6,20 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAppDispatch } from "@/store/hooks";
 import {
+  Avatar,
   Box,
   Button,
   Container,
   CssBaseline,
   MenuItem,
+  Link,
   Select,
   SelectChangeEvent,
   TextField,
   Typography,
+  Stack,
 } from "@mui/material";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterPayload>({
@@ -36,17 +40,14 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ Handle select dropdown changes (for role)
   const handleSelectChange = (e: SelectChangeEvent) => {
     setFormData({ ...formData, role: e.target.value as "user" | "admin" });
   };
 
-  // ✅ Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -73,10 +74,15 @@ export default function RegisterPage() {
           alignItems: "center",
         }}
       >
-        <Typography component="h1" variant="h5">
-          Register
+        <Avatar sx={{ m: "auto", bgcolor: "secondary.main" }}>
+          <LockOutlinedIcon />
+        </Avatar>
+        <Typography component="h1" variant="h5" sx={{ mt: 1 }}>
+          Sign Up
         </Typography>
+
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+          {/* Username field - own line */}
           <TextField
             fullWidth
             label="Username"
@@ -86,44 +92,50 @@ export default function RegisterPage() {
             required
             margin="normal"
           />
-          <TextField
-            fullWidth
-            label="Email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="First Name"
-            name="first_name"
-            value={formData.first_name}
-            onChange={handleChange}
-            required
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Last Name"
-            name="last_name"
-            value={formData.last_name}
-            onChange={handleChange}
-            required
-            margin="normal"
-          />
+
+          {/* Email & Password - same line */}
+          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+            <TextField
+              fullWidth
+              label="Password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </Stack>
+
+          {/* First & Last Name - same line */}
+          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="First Name"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              required
+            />
+            <TextField
+              fullWidth
+              label="Last Name"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              required
+            />
+          </Stack>
+
+          {/* Phone - own line */}
           <TextField
             fullWidth
             label="Phone"
@@ -133,7 +145,8 @@ export default function RegisterPage() {
             required
             margin="normal"
           />
-          {/* Role Dropdown */}
+
+          {/* Role Select - own line */}
           <Select
             fullWidth
             name="role"
@@ -145,15 +158,27 @@ export default function RegisterPage() {
             <MenuItem value="user">User</MenuItem>
             <MenuItem value="admin">Admin</MenuItem>
           </Select>
-          <TextField
-            fullWidth
-            label="Organization Name"
-            name="organization_name"
-            value={formData.organization_name}
-            onChange={handleChange}
-            required
-            margin="normal"
-          />
+
+          {/* Organization Name & Phone - same line */}
+          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Organization Name"
+              name="organization_name"
+              value={formData.organization_name}
+              onChange={handleChange}
+              required
+            />
+            <TextField
+              fullWidth
+              label="Organization Phone"
+              name="organization_phone"
+              value={formData.organization_phone}
+              onChange={handleChange}
+            />
+          </Stack>
+
+          {/* Organization Address - own line */}
           <TextField
             fullWidth
             label="Organization Address"
@@ -162,15 +187,7 @@ export default function RegisterPage() {
             onChange={handleChange}
             margin="normal"
           />
-          <TextField
-            fullWidth
-            label="Organization Phone"
-            name="organization_phone"
-            value={formData.organization_phone}
-            onChange={handleChange}
-            margin="normal"
-          />
-          {/* Submit Button */}
+
           <Button
             type="submit"
             fullWidth
@@ -182,11 +199,18 @@ export default function RegisterPage() {
             {loading ? "Registering..." : "Register"}
           </Button>
         </Box>
+
         {error && (
           <Typography color="error" sx={{ mt: 2 }}>
             ⚠️ {error}
           </Typography>
         )}
+      </Box>
+
+      <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
+        <Link href="/auth/login" variant="body2">
+          {"Have an account? Sign In"}
+        </Link>
       </Box>
     </Container>
   );
