@@ -82,7 +82,6 @@ export default function RegisterPage() {
         </Typography>
 
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
-          {/* Username field - own line */}
           <TextField
             fullWidth
             label="Username"
@@ -93,7 +92,6 @@ export default function RegisterPage() {
             margin="normal"
           />
 
-          {/* Email & Password - same line */}
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
             <TextField
               fullWidth
@@ -115,7 +113,6 @@ export default function RegisterPage() {
             />
           </Stack>
 
-          {/* First & Last Name - same line */}
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
             <TextField
               fullWidth
@@ -135,7 +132,6 @@ export default function RegisterPage() {
             />
           </Stack>
 
-          {/* Phone - own line */}
           <TextField
             fullWidth
             label="Phone"
@@ -146,7 +142,6 @@ export default function RegisterPage() {
             margin="normal"
           />
 
-          {/* Role Select - own line */}
           <Select
             fullWidth
             name="role"
@@ -159,7 +154,6 @@ export default function RegisterPage() {
             <MenuItem value="admin">Admin</MenuItem>
           </Select>
 
-          {/* Organization Name & Phone - same line */}
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
             <TextField
               fullWidth
@@ -178,7 +172,6 @@ export default function RegisterPage() {
             />
           </Stack>
 
-          {/* Organization Address - own line */}
           <TextField
             fullWidth
             label="Organization Address"
