@@ -150,7 +150,7 @@ export default function RegisterPage() {
             required
             sx={{ mt: 2 }}
           >
-            <MenuItem value="user">User</MenuItem>
+            {/* <MenuItem value="user">User</MenuItem> */}
             <MenuItem value="admin">Admin</MenuItem>
           </Select>
 
