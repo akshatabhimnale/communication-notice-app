@@ -135,13 +135,13 @@ const authSlice = createSlice({
       .addCase(registerThunk.pending, (state) => {
         state.loading = true;
       })
-      .addCase(
-        registerThunk.fulfilled,
-        (state, action: PayloadAction<User>) => {
-          state.loading = false;
-          state.user = action.payload;
-        }
-      )
+      // .addCase(
+      //   registerThunk.fulfilled,
+      //   (state, action: PayloadAction<User>) => {
+      //     state.loading = false;
+      //     state.user = action.payload;
+      //   }
+      // )
       .addCase(registerThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;

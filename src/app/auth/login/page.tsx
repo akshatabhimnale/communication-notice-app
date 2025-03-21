@@ -50,8 +50,8 @@ export default function LoginPage() {
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
-        backgroundColor: theme.palette.background.default,
-        color: theme.palette.text.primary,
+        // backgroundColor: theme.palette.background.default,
+        // color: theme.palette.text.primary,
       }}
     >
       <Container component="main" maxWidth="xs">
@@ -64,7 +64,11 @@ export default function LoginPage() {
             Sign in
           </Typography>
         </Box>
-        <Box component="form" onSubmit={handleLogin} sx={{ mt: 1, width: "100%" }}>
+        <Box
+          component="form"
+          onSubmit={handleLogin}
+          sx={{ mt: 1, width: "100%" }}
+        >
           <TextField
             variant="outlined"
             margin="normal"

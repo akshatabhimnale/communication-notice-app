@@ -55,6 +55,8 @@ export default function RegisterPage() {
 
     try {
       await dispatch(registerThunk(formData)).unwrap();
+
+      setLoading(false);
       router.push("/auth/login");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
