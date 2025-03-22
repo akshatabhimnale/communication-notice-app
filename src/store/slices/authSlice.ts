@@ -137,7 +137,7 @@ const authSlice = createSlice({
       })
       .addCase(
         registerThunk.fulfilled,
-        (state, action: PayloadAction<User>) => {
+        (state) => {
           state.loading = false;
           // state.user = action.payload;
         }
@@ -145,7 +145,7 @@ const authSlice = createSlice({
       .addCase(registerThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      })
+      }) 
       .addCase(
         refreshTokenThunk.fulfilled,
         (state, action: PayloadAction<string>) => {
