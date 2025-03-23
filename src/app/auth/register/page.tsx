@@ -29,7 +29,7 @@ export default function RegisterPage() {
     first_name: "",
     last_name: "",
     phone: "",
-    role: "user",
+    role: "admin",
     organization_name: "",
     organization_address: "",
     organization_phone: "",
@@ -38,7 +38,7 @@ export default function RegisterPage() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<Record<string, string[]> | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -51,20 +51,22 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setErrors(null);
 
     try {
       await dispatch(registerThunk(formData)).unwrap();
-
       setLoading(false);
       router.push("/auth/login");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
-    } finally {
       setLoading(false);
+      if (err && typeof err === "object" && "errors" in err) {
+        const errorObj = err as { errors: Record<string, string[]> };
+        setErrors(errorObj.errors);
+      } else {
+        setErrors({ general: ["Registration failed"] });
+      }
     }
   };
-
   return (
     <Container component="main" maxWidth="xs">
       <CssBaseline />
@@ -92,6 +94,8 @@ export default function RegisterPage() {
             onChange={handleChange}
             required
             margin="normal"
+            error={!!errors?.username}
+            helperText={errors?.username?.join(", ")}
           />
 
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
@@ -103,6 +107,8 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={handleChange}
               required
+              error={!!errors?.email}
+              helperText={errors?.email?.join(", ")}
             />
             <TextField
               fullWidth
@@ -112,6 +118,8 @@ export default function RegisterPage() {
               value={formData.password}
               onChange={handleChange}
               required
+              error={!!errors?.password}
+              helperText={errors?.password?.join(", ")}
             />
           </Stack>
 
@@ -123,6 +131,8 @@ export default function RegisterPage() {
               value={formData.first_name}
               onChange={handleChange}
               required
+              error={!!errors?.first_name}
+              helperText={errors?.first_name?.join(", ")}
             />
             <TextField
               fullWidth
@@ -142,6 +152,8 @@ export default function RegisterPage() {
             onChange={handleChange}
             required
             margin="normal"
+            error={!!errors?.phone}
+            helperText={errors?.phone?.join(", ")}
           />
 
           <Select
@@ -150,9 +162,13 @@ export default function RegisterPage() {
             value={formData.role}
             onChange={handleSelectChange}
             required
+            displayEmpty
             sx={{ mt: 2 }}
+            error={!!errors?.role}
           >
-            {/* <MenuItem value="user">User</MenuItem> */}
+            <MenuItem value="" disabled>
+              Select Role
+            </MenuItem>
             <MenuItem value="admin">Admin</MenuItem>
           </Select>
 
@@ -164,6 +180,8 @@ export default function RegisterPage() {
               value={formData.organization_name}
               onChange={handleChange}
               required
+              error={!!errors?.organization_name}
+              helperText={errors?.organization_name?.join(", ")}
             />
             <TextField
               fullWidth
@@ -171,6 +189,8 @@ export default function RegisterPage() {
               name="organization_phone"
               value={formData.organization_phone}
               onChange={handleChange}
+              error={!!errors?.organization_phone}
+              helperText={errors?.organization_phone?.join(", ")}
             />
           </Stack>
 
@@ -181,6 +201,8 @@ export default function RegisterPage() {
             value={formData.organization_address}
             onChange={handleChange}
             margin="normal"
+            error={!!errors?.organization_address}
+            helperText={errors?.organization_address?.join(", ")}
           />
 
           <Button
@@ -195,9 +217,9 @@ export default function RegisterPage() {
           </Button>
         </Box>
 
-        {error && (
+        {errors?.general && (
           <Typography color="error" sx={{ mt: 2 }}>
-            ⚠️ {error}
+            ⚠️ {errors.general.join(", ")}
           </Typography>
         )}
       </Box>

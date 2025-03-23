@@ -34,6 +34,16 @@ const initialState: AuthState = {
   error: null,
 };
 
+interface ApiErrorResponse {
+  response?: {
+    data?: {
+      errors?: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
+
 export const loginThunk = createAsyncThunk(
   "auth/login",
   async (data: LoginPayload, { dispatch, rejectWithValue }) => {
@@ -57,8 +67,13 @@ export const registerThunk = createAsyncThunk(
     try {
       return await register(data);
     } catch (error: unknown) {
-      const err = error as { message?: string };
-      return rejectWithValue(err.message || "Failed to register");
+      const typedError = error as ApiErrorResponse;
+      if (typedError?.response?.data?.errors) {
+        return rejectWithValue(typedError.response.data.errors);
+      } else {
+        const errMsg = (error as Error).message || "Failed to register";
+        return rejectWithValue({ message: errMsg });
+      }
     }
   }
 );
@@ -102,7 +117,7 @@ const authSlice = createSlice({
       state.user = null;
       state.accessToken = null;
       state.refreshToken = null;
-      state.error = null; // Clearing all on logout
+      state.error = null;
     },
     setTokens(
       state,
