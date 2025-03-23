@@ -49,7 +49,7 @@ export const loginThunk = createAsyncThunk(
   async (data: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
       const response = await login(data);
-      const { access, refresh, user } = response;
+      const { access, refresh, user } = response.data;
       document.cookie = `accessToken=${access}; path=/; Secure`;
       setAuthToken(access);
       dispatch(setTokens({ accessToken: access, refreshToken: refresh }));
