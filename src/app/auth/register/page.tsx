@@ -21,6 +21,16 @@ import {
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 
+interface ErrorResponse {
+  response?: {
+    data?: {
+      errors?: Record<string, string[]>;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterPayload>({
     username: "",
@@ -59,11 +69,12 @@ export default function RegisterPage() {
       router.push("/auth/login");
     } catch (err: unknown) {
       setLoading(false);
-      if (err && typeof err === "object" && "errors" in err) {
-        const errorObj = err as { errors: Record<string, string[]> };
-        setErrors(errorObj.errors);
+      const error = err as ErrorResponse;
+
+      if (error.response && error.response.data && error.response.data.errors) {
+        setErrors(error.response.data.errors);
       } else {
-        setErrors({ general: ["Registration failed"] });
+        setErrors({ general: [error.message || "Registration failed"] });
       }
     }
   };
