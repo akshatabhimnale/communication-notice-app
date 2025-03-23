@@ -45,8 +45,8 @@ export const loginThunk = createAsyncThunk(
       dispatch(setTokens({ accessToken: access, refreshToken: refresh }));
       return { user, access, refresh };
     } catch (error: unknown) {
-      const err = error as { response?: { data?: string } };
-      return rejectWithValue(err.response?.data || "Failed to login");
+      const err = error as { message?: string };
+      return rejectWithValue(err.message || "Failed to login");
     }
   }
 );
@@ -57,8 +57,8 @@ export const registerThunk = createAsyncThunk(
     try {
       return await register(data);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: string } };
-      return rejectWithValue(err.response?.data || "Failed to register");
+      const err = error as { message?: string };
+      return rejectWithValue(err.message || "Failed to register");
     }
   }
 );
@@ -88,8 +88,8 @@ export const logoutThunk = createAsyncThunk(
       setAuthToken(null);
       dispatch(logout());
     } catch (error: unknown) {
-      const err = error as { response?: { data?: string } };
-      return rejectWithValue(err.response?.data || "Failed to logout");
+      const err = error as { message?: string };
+      return rejectWithValue(err.message || "Failed to logout");
     }
   }
 );
@@ -102,6 +102,7 @@ const authSlice = createSlice({
       state.user = null;
       state.accessToken = null;
       state.refreshToken = null;
+      state.error = null; // Clearing all on logout
     },
     setTokens(
       state,
@@ -116,18 +117,13 @@ const authSlice = createSlice({
       .addCase(loginThunk.pending, (state) => {
         state.loading = true;
       })
-      .addCase(
-        loginThunk.fulfilled,
-        (
-          state,
-          action: PayloadAction<{ user: User; access: string; refresh: string }>
-        ) => {
-          state.loading = false;
-          state.user = action.payload.user;
-          state.accessToken = action.payload.access;
-          state.refreshToken = action.payload.refresh;
-        }
-      )
+      .addCase(loginThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.accessToken = action.payload.access;
+        state.refreshToken = action.payload.refresh;
+        state.error = null;
+      })
       .addCase(loginThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
@@ -135,27 +131,30 @@ const authSlice = createSlice({
       .addCase(registerThunk.pending, (state) => {
         state.loading = true;
       })
-      .addCase(
-        registerThunk.fulfilled,
-        (state, action: PayloadAction<User>) => {
-          state.loading = false;
-          // state.user = action.payload;
-        }
-      )
+      .addCase(registerThunk.fulfilled, (state) => {
+        state.loading = false;
+        // state.user = action.payload;
+        state.error = null;
+      })
       .addCase(registerThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-      .addCase(
-        refreshTokenThunk.fulfilled,
-        (state, action: PayloadAction<string>) => {
-          state.accessToken = action.payload;
-        }
-      )
+      .addCase(refreshTokenThunk.fulfilled, (state, action) => {
+        state.accessToken = action.payload;
+        state.error = null;
+      })
+      .addCase(refreshTokenThunk.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
       .addCase(logoutThunk.fulfilled, (state) => {
         state.user = null;
         state.accessToken = null;
         state.refreshToken = null;
+        state.error = null;
+      })
+      .addCase(logoutThunk.rejected, (state, action) => {
+        state.error = action.payload as string;
       });
   },
 });

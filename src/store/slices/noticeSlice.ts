@@ -25,10 +25,8 @@ export const fetchNoticesThunk = createAsyncThunk(
     try {
       return await fetchNotices();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: string } };
-      return rejectWithValue(
-        err.response?.data || "Failed to fetch notice-types"
-      );
+      const err = error as { message?: string };
+      return rejectWithValue(err.message || "Failed to fetch notice-types");
     }
   }
 );
@@ -39,10 +37,8 @@ export const createNoticeThunk = createAsyncThunk(
     try {
       return await createNotice(data);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: string } };
-      return rejectWithValue(
-        err.response?.data || "Failed to create notice-type"
-      );
+      const err = error as { message?: string };
+      return rejectWithValue(err.message || "Failed to create notice-type");
     }
   }
 );
@@ -53,10 +49,8 @@ export const updateNoticeThunk = createAsyncThunk(
     try {
       return await updateNotice(id, data);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: string } };
-      return rejectWithValue(
-        err.response?.data || "Failed to update notice-type"
-      );
+      const err = error as { message?: string };
+      return rejectWithValue(err.message || "Failed to update notice-type");
     }
   }
 );
@@ -68,10 +62,8 @@ export const deleteNoticeThunk = createAsyncThunk(
       await deleteNotice(id);
       return id;
     } catch (error: unknown) {
-      const err = error as { response?: { data?: string } };
-      return rejectWithValue(
-        err.response?.data || "Failed to delete notice-type"
-      );
+      const err = error as { message?: string };
+      return rejectWithValue(err.message || "Failed to delete notice-type");
     }
   }
 );

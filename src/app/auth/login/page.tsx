@@ -17,7 +17,7 @@ import {
   Box,
   Typography,
   Container,
-  useTheme,
+  // useTheme,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 
@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const theme = useTheme();
+  // const theme = useTheme();
 
   const { user, loading, error } = useSelector(
     (state: RootState) => state.auth
