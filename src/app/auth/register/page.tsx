@@ -60,7 +60,7 @@ export default function RegisterPage() {
     } catch (err: unknown) {
       setLoading(false);
       if (typeof err === "object" && err !== null) {
-        const errors = err as { [key: string]: any[] };
+        const errors = err as Record<string, string[]>;
         setErrors(errors);
       } else {
         setErrors({ general: ["An unexpected error occurred"] });
