@@ -100,10 +100,14 @@ export const logoutThunk = createAsyncThunk(
   async (_: void, { dispatch, rejectWithValue }) => {
     try {
       await logout();
+      // Clearing the access token from the cookie using unix epoch time
+      document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; Secure; SameSite=Strict";
+      console.log("✅ token deleted from cookie")
       setAuthToken(null);
-      dispatch(logout());
+      dispatch(logout());      
+      return true;
     } catch (error: unknown) {
-      const err = error as { message?: string };
+      const err = error instanceof Error ? error : { message: "Unknown error" };
       return rejectWithValue(err.message || "Failed to logout");
     }
   }

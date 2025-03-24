@@ -57,7 +57,10 @@ export const refreshToken = async (refreshToken: string): Promise<string> => {
 export const logout = async (): Promise<void> => {
   try {
     await authApiClient.post("/auth/logout/");
-  } catch (error) {
-    throw error;
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: string } };
+    const message = err.response?.data || "Failed to logout";
+    console.error("❌ Logout Failed:", message);
+    throw new Error(message);
   }
 };
