@@ -13,10 +13,6 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import LayersIcon from "@mui/icons-material/Layers";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import GroupIcon from "@mui/icons-material/Group";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import EditIcon from "@mui/icons-material/Edit";
-import ListIcon from "@mui/icons-material/List";
-import DeleteIcon from "@mui/icons-material/Delete";
 import SettingsIcon from "@mui/icons-material/Settings";
 
 import type { Navigation } from "@toolpad/core/AppProvider";
