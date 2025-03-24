@@ -3,7 +3,7 @@
 import { RegisterPayload } from "@/services/authService";
 import { registerThunk } from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppDispatch } from "@/store/hooks";
 import {
   Avatar,
@@ -18,8 +18,28 @@ import {
   TextField,
   Typography,
   Stack,
+  Autocomplete,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+
+interface Organization {
+  name: string;
+  phone: string;
+  address: string;
+}
+
+interface ApiResponse {
+  success: boolean;
+  data: {
+    id: number;
+    name: string;
+    address: string;
+    phone: string;
+    created_at: string;
+  }[];
+  errors: Record<string, string[]>; 
+  meta: Record<string, string | number | boolean>; 
+}
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterPayload>({
@@ -35,17 +55,85 @@ export default function RegisterPage() {
     organization_phone: "",
   });
 
-  const dispatch = useAppDispatch();
-  const router = useRouter();
+  const [allOrganizations, setAllOrganizations] = useState<Organization[]>([]);
+  const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]> | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const dispatch = useAppDispatch();
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const response = await fetch("https://16.170.157.110/api/v1/organizations/", {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          mode: "cors",
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data: ApiResponse = await response.json();
+        
+        const orgs: Organization[] = data.data.map((org) => ({
+          name: org.name,
+          phone: org.phone || "",
+          address: org.address || "",
+        }));
+
+        setAllOrganizations(orgs);
+        setFilteredOrganizations([]); 
+      } catch (error) {
+        console.error("Error fetching organizations:", error);
+        setApiError("Failed to load organizations");
+      }
+    };
+
+    fetchOrganizations();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    if (name === "organization_name") {
+      if (value.length < 1) {
+        setFilteredOrganizations([]);
+      } else {
+        const filtered = allOrganizations.filter((org) =>
+          org.name.toLowerCase().includes(value.toLowerCase())
+        );
+        setFilteredOrganizations(filtered);
+      }
+    }
   };
 
   const handleSelectChange = (e: SelectChangeEvent) => {
     setFormData({ ...formData, role: e.target.value as "user" | "admin" });
+  };
+
+  const handleOrganizationSelect = (
+    event: React.SyntheticEvent,
+    value: Organization | string | null
+  ) => {
+    if (typeof value === "string") {
+      setFormData({
+        ...formData,
+        organization_name: value,
+      });
+    } else if (value) {
+      setFormData({
+        ...formData,
+        organization_name: value.name,
+        organization_phone: value.phone,
+        organization_address: value.address,
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,6 +155,7 @@ export default function RegisterPage() {
       }
     }
   };
+
   return (
     <Container component="main" maxWidth="xs">
       <CssBaseline />
@@ -141,6 +230,8 @@ export default function RegisterPage() {
               value={formData.last_name}
               onChange={handleChange}
               required
+              error={!!errors?.last_name}
+              helperText={errors?.last_name?.join(", ")}
             />
           </Stack>
 
@@ -173,15 +264,30 @@ export default function RegisterPage() {
           </Select>
 
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-            <TextField
+            <Autocomplete
               fullWidth
-              label="Organization Name"
-              name="organization_name"
-              value={formData.organization_name}
-              onChange={handleChange}
-              required
-              error={!!errors?.organization_name}
-              helperText={errors?.organization_name?.join(", ")}
+              freeSolo
+              options={filteredOrganizations}
+              getOptionLabel={(option) =>
+                typeof option === "string" ? option : option.name
+              }
+              onChange={handleOrganizationSelect}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Organization Name"
+                  name="organization_name"
+                  value={formData.organization_name}
+                  onChange={handleChange}
+                  required
+                  error={!!errors?.organization_name}
+                  helperText={
+                    errors?.organization_name?.join(", ") || apiError || ""
+                  }
+                />
+              )}
+              noOptionsText="No organizations found"
+              loading={allOrganizations.length === 0 && !apiError}
             />
             <TextField
               fullWidth
