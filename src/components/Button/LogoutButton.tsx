@@ -1,16 +1,21 @@
 "use client";
-
-import { logout as logoutAction } from "@/store/slices/authSlice";
+import { logoutThunk } from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/store";
 
 export default function LogoutButton() {
   const router = useRouter();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
 
   const handleLogout = async () => {
-    dispatch(logoutAction());
-    router.push("/auth/login");
+    try {
+      // imported logoutthunk from authslice 
+      await dispatch(logoutThunk()).unwrap();
+      router.push("/auth/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   return <button onClick={handleLogout}>Logout</button>;
