@@ -21,24 +21,12 @@ import {
   Autocomplete,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import { fetchOrganizations } from "@/services/organizationService";
 
-interface Organization {
+export interface Organization {
   name: string;
   phone: string;
   address: string;
-}
-
-interface ApiResponse {
-  success: boolean;
-  data: {
-    id: number;
-    name: string;
-    address: string;
-    phone: string;
-    created_at: string;
-  }[];
-  errors: Record<string, string[]>; 
-  meta: Record<string, string | number | boolean>; 
 }
 
 export default function RegisterPage() {
@@ -56,7 +44,6 @@ export default function RegisterPage() {
   });
 
   const [allOrganizations, setAllOrganizations] = useState<Organization[]>([]);
-  const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]> | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -65,52 +52,21 @@ export default function RegisterPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const fetchOrganizations = async () => {
+    const loadOrganizations = async () => {
       try {
-        const response = await fetch("https://16.170.157.110/api/v1/organizations/", {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          mode: "cors",
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data: ApiResponse = await response.json();
-        
-        const orgs: Organization[] = data.data.map((org) => ({
-          name: org.name,
-          phone: org.phone || "",
-          address: org.address || "",
-        }));
-
+        const orgs = await fetchOrganizations();
         setAllOrganizations(orgs);
-        setFilteredOrganizations([]); 
       } catch (error) {
-        console.error("Error fetching organizations:", error);
-        setApiError("Failed to load organizations");
+        setApiError(error instanceof Error ? error.message : "Failed to load organizations");
       }
     };
 
-    fetchOrganizations();
+    loadOrganizations();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    
-    if (name === "organization_name") {
-      if (value.length < 1) {
-        setFilteredOrganizations([]);
-      } else {
-        const filtered = allOrganizations.filter((org) =>
-          org.name.toLowerCase().includes(value.toLowerCase())
-        );
-        setFilteredOrganizations(filtered);
-      }
-    }
   };
 
   const handleSelectChange = (e: SelectChangeEvent) => {
@@ -267,7 +223,11 @@ export default function RegisterPage() {
             <Autocomplete
               fullWidth
               freeSolo
-              options={filteredOrganizations}
+              options={allOrganizations.filter((org) =>
+                formData.organization_name.length >= 2
+                  ? org.name.toLowerCase().includes(formData.organization_name.toLowerCase())
+                  : false
+              )}
               getOptionLabel={(option) =>
                 typeof option === "string" ? option : option.name
               }
