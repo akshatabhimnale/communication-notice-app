@@ -224,7 +224,7 @@ export default function RegisterPage() {
               fullWidth
               freeSolo
               options={allOrganizations.filter((org) =>
-                formData.organization_name.length >= 2
+                formData.organization_name.length >= 1
                   ? org.name.toLowerCase().includes(formData.organization_name.toLowerCase())
                   : false
               )}
