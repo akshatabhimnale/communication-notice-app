@@ -1,4 +1,5 @@
 import { Organization } from "../app/auth/register/page";
+import { API_URLS } from "@/config/config";
 
 interface ApiResponse {
   success: boolean;
@@ -15,7 +16,7 @@ interface ApiResponse {
 
 export const fetchOrganizations = async (): Promise<Organization[]> => {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || "http://localhost:3000";
+    const apiUrl = API_URLS.AUTH_SERVICE;
     const response = await fetch(`${apiUrl}/organizations/`, {
       headers: {
         "Content-Type": "application/json",
@@ -28,7 +29,7 @@ export const fetchOrganizations = async (): Promise<Organization[]> => {
     }
 
     const data: ApiResponse = await response.json();
-    
+
     return data.data.map((org) => ({
       name: org.name,
       phone: org.phone || "",
