@@ -1,0 +1,27 @@
+
+  
+  .users-table-header-row {
+    height: 56px;
+  }
+  
+  .users-table-header-cell {
+    font-weight: bold;
+    color: var(--background);
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #1976d2;
+    
+  }
+
+.users-table-row {
+  transition: background-color 0.2s ease;
+}
+
+.users-table-row:hover {
+  background-color: #4a4949; /* Light gray background */
+  cursor: pointer;
+}
+
+
+

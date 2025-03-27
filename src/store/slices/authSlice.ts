@@ -1,4 +1,5 @@
 import { setAuthToken } from "@/services/apiClients/authApiClient";
+import { setAuthorizationHeader } from "@/services/apiClients/usersApiClient";
 import {
   login,
   LoginPayload,
@@ -51,7 +52,11 @@ export const loginThunk = createAsyncThunk(
       const response = await login(data);
       const { access, refresh, user } = response.data;
       document.cookie = `accessToken=${access}; path=/; Secure`;
-      setAuthToken(access);
+      document.cookie = `refreshToken=${refresh}; path=/; Secure`;
+      
+      // Use the new method to set authorization
+      setAuthorizationHeader(access);
+      
       dispatch(setTokens({ accessToken: access, refreshToken: refresh }));
       return { user, access, refresh };
     } catch (error: unknown) {
@@ -82,18 +87,28 @@ export const refreshTokenThunk = createAsyncThunk(
   "auth/refreshToken",
   async (token: string, { dispatch, rejectWithValue }) => {
     try {
+      // Directly use the refreshToken method from authService
       const accessToken = await refreshToken(token);
-      setAuthToken(accessToken);
-      dispatch(setTokens({ accessToken, refreshToken: token }));
-
+      
+      // Set the new token in the store
+      dispatch(setTokens({ 
+        accessToken, 
+        refreshToken: token 
+      }));
+      
+      console.log("Refresh Success:", accessToken);
       return accessToken;
     } catch (error: unknown) {
       const err = error as Error;
+      
+      // If refresh fails, force logout
       dispatch(logout());
+      
       return rejectWithValue(err.message || "Failed to refresh token");
     }
   }
 );
+
 
 export const logoutThunk = createAsyncThunk(
   "auth/logout",
@@ -102,6 +117,8 @@ export const logoutThunk = createAsyncThunk(
       await logout();
       // Clearing the access token from the cookie using unix epoch time
       document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; Secure; SameSite=Strict";
+      // clear the refresh token from the cookie using unix epoch time
+      document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; Secure; SameSite=Strict";
       console.log("✅ token deleted from cookie")
       setAuthToken(null);
       dispatch(logout());      
@@ -129,6 +146,7 @@ const authSlice = createSlice({
     ) {
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
+      console.log("Tokens set in store:", state);
     },
   },
   extraReducers: (builder) => {
@@ -137,12 +155,14 @@ const authSlice = createSlice({
         state.loading = true;
       })
       .addCase(loginThunk.fulfilled, (state, action) => {
+        console.log("Login successful, tokens received:", action.payload);
         state.loading = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.access;
         state.refreshToken = action.payload.refresh;
         state.error = null;
       })
+      
       .addCase(loginThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
