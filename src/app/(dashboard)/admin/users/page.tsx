@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { RootState } from "@/store";
 import * as userSlice from "@/store/slices/usersSlice";
