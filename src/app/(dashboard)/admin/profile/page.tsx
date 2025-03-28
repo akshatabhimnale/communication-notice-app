@@ -45,7 +45,8 @@ export default function ProfilePage() {
         const userProfile = await fetchUserProfile();
         setProfile(userProfile);
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+        const errorMessage =
+          err instanceof Error ? err.message : "An unexpected error occurred";
         setError(errorMessage);
         if (errorMessage.includes("Please log in again")) {
           setTimeout(() => router.push("/auth/login"), 2000);
@@ -101,7 +102,7 @@ export default function ProfilePage() {
           alignItems: "center",
         }}
       >
-        <Typography component="h1" variant="h4" sx={{ mb: 4 }}>
+        <Typography component="h1" variant="h4" sx={{ mb: 1 }}>
           User Profile
         </Typography>
 
