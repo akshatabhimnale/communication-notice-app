@@ -74,7 +74,7 @@ const NAVIGATION: Navigation = [
   {
     title: "User Management",
     icon: <GroupIcon />,
-    segment: "admin/dashboard/users",
+    segment: "admin/users",
   },
   {
     title: "Settings",

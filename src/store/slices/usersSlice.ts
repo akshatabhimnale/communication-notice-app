@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { User, fetchUsers } from "@/services/usersService";
+import { AxiosError } from "axios";
 
 interface UserState {
     users: User[];
@@ -33,10 +34,10 @@ interface PaginatedUserResponse {
       try {
         const response = await fetchUsers(url);
         return response;
-      } catch (error: any) {
-        const status = error.response?.status;
-        const message = error.response?.data?.message || "Failed to fetch users";
-        
+      } catch (error: unknown) {
+        const axiosError = error as AxiosError;
+        const status = axiosError.response?.status;
+        const message = (axiosError.response?.data as { message?: string })?.message || "Failed to fetch users";
         return rejectWithValue({ status, message });
       }
     }
