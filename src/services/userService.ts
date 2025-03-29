@@ -64,3 +64,53 @@ export const fetchUserProfile = async (): Promise<UserProfile> => {
     throw new Error("An unexpected error occurred");
   }
 };
+
+export const updateUserProfile = async (
+  userId: number,
+  updates: Partial<Pick<UserProfile, "username" | "email" | "phone"> & { organization_id: number }>
+): Promise<UserProfile> => {
+  const token = getTokenFromCookie();
+
+  if (!token) {
+    throw new Error("No authentication token found. Please log in.");
+  }
+
+  try {
+    setAuthToken(token);
+    const response = await authApiClient.put(`/users/${userId}/`, updates);
+    return response.data.data;
+  } catch (err: unknown) {
+    if (err instanceof AxiosError) {
+      if (err.response?.status === 401) {
+        clearTokenCookie();
+        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+      }
+      console.error("Axios error details:", err.message, err.config);
+      throw new Error(
+        err.response
+          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+          : `Network Error: ${err.message}`
+      );
+    }
+    throw new Error("An unexpected error occurred");
+  }
+};
+
+export const updateCurrentUserProfile = async (
+  currentProfile: UserProfile,
+  updates: Partial<Pick<UserProfile, "username" | "email" | "phone">>
+): Promise<UserProfile> => {
+  const orgId = currentProfile.organization_id || currentProfile.organization?.id;
+  if (!orgId) {
+    throw new Error("Organization ID is missing from profile data");
+  }
+
+  const payload = {
+    username: updates.username,
+    email: updates.email,
+    phone: updates.phone,
+    organization_id: orgId,
+  };
+
+  return updateUserProfile(currentProfile.id, payload);
+};
