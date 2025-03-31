@@ -1,36 +1,14 @@
 "use client";
-import * as React from "react";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
-import Button from "@mui/material/Button";
-import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
-import Typography from "@mui/material/Typography";
-import './UsersTable.css'
+import { useState } from "react";
+import { 
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
+  Paper, Button, Box, CircularProgress, Typography, Popover, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions
+} from "@mui/material";
+import EditUserModal from "./EditUserModal";
+import { User, deleteUser } from "@/services/usersService";
 
-interface Organization {
-  id: number;
-  name: string;
-  address: string;
-  phone: string;
-  created_at: string;
-}
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  role: string;
-  organization: Organization;
-  organization_id: number;
+export interface UserWithDelete extends User {
+  deleted?: boolean;
 }
 
 interface UsersTableProps {
@@ -40,6 +18,7 @@ interface UsersTableProps {
   nextPageUrl: string | null;
   prevPageUrl: string | null;
   onPageChange: (url: string | null) => void;
+  onUserUpdated: (updatedUser: UserWithDelete) => void;
 }
 
 export default function UsersTable({
@@ -49,7 +28,57 @@ export default function UsersTable({
   nextPageUrl,
   prevPageUrl,
   onPageChange,
+  onUserUpdated,
 }: UsersTableProps) {
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+  const handleActionsClick = (event: React.MouseEvent<HTMLButtonElement>, user: User) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedUser(user);
+  };
+
+  const handleClose = () => setAnchorEl(null);
+
+  const handleEditClick = () => {
+    setEditModalOpen(true);
+    handleClose();
+  };
+
+  const handleDeletePrompt = () => {
+    setConfirmDeleteOpen(true);
+    handleClose();
+  };
+
+  const handleDeleteCancel = () => {
+    setConfirmDeleteOpen(false);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedUser) return;
+    
+    setDeleteLoading(true);
+    setDeleteError(null);
+    
+    try {
+      await deleteUser(selectedUser.id);
+      const userWithDelete: UserWithDelete = { 
+        ...selectedUser, 
+        deleted: true 
+      };
+      onUserUpdated(userWithDelete);
+      setConfirmDeleteOpen(false);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Failed to delete user");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <Box sx={{ width: "100%" }}>
       <TableContainer component={Paper}>
@@ -67,45 +96,86 @@ export default function UsersTable({
 
         {!loading && !error && (
           <Table sx={{ minWidth: 650 }} aria-label="users table">
-            <TableHead className="users-table-head">
-              <TableRow className="users-table-header-row">
-                <TableCell className="users-table-header-cell">
-                  Username
-                </TableCell>
-                <TableCell className="users-table-header-cell" align="left">
-                  Email
-                </TableCell>
-                <TableCell className="users-table-header-cell" align="left">
-                  Phone
-                </TableCell>
-                <TableCell className="users-table-header-cell" align="left">
-                  Role
-                </TableCell>
-                <TableCell className="users-table-header-cell" align="left">
-                  Organization
-                </TableCell>
+            <TableHead>
+              <TableRow>
+                <TableCell>Username</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Phone</TableCell>
+                <TableCell>Role</TableCell>
+                <TableCell>Organization</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {users.map((user) => (
-                <TableRow
-                  key={user.id}
-                  className="users-table-row"
-                  sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-                >
-                  <TableCell component="th" scope="row">
-                    {user.username}
+                <TableRow key={user.id}>
+                  <TableCell>{user.username}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.phone}</TableCell>
+                  <TableCell>{user.role}</TableCell>
+                  <TableCell>{user.organization?.name}</TableCell>
+                  <TableCell>
+                    <Button onClick={(e) => handleActionsClick(e, user)}>⋮</Button>
                   </TableCell>
-                  <TableCell align="left">{user.email}</TableCell>
-                  <TableCell align="left">{user.phone}</TableCell>
-                  <TableCell align="left">{user.role}</TableCell>
-                  <TableCell align="left">{user.organization?.name}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
       </TableContainer>
+
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={handleClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <MenuItem onClick={handleEditClick}>Edit</MenuItem>
+        <MenuItem 
+          onClick={handleDeletePrompt} 
+          sx={{ color: 'error.main' }}
+        >
+          Delete
+        </MenuItem>
+      </Popover>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDeleteOpen}
+        onClose={handleDeleteCancel}
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete {selectedUser?.username}?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            color="error" 
+            variant="contained"
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? <CircularProgress size={24} /> : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {deleteError && (
+        <Typography color="error" sx={{ mt: 2 }}>
+          {deleteError}
+        </Typography>
+      )}
+
+      {selectedUser && (
+        <EditUserModal
+          user={selectedUser}
+          open={editModalOpen}
+          setOpen={setEditModalOpen}
+          onUserUpdated={onUserUpdated}
+        />
+      )}
 
       <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
         <Button

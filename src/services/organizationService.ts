@@ -40,3 +40,4 @@ export const fetchOrganizations = async (): Promise<Organization[]> => {
     throw new Error("Failed to load organizations");
   }
 };
+

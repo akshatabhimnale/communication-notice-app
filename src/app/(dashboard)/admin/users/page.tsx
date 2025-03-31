@@ -7,6 +7,9 @@ import * as authSlice from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
 import UsersTable from '@/components/Usersdetails/UsersTable';
 import { setAuthorizationHeader } from "@/services/apiClients/usersApiClient";
+import { UserWithDelete } from "@/components/Usersdetails/UsersTable"; // Import the interface
+// or define it locally if you prefer
+import { updateUser, removeUser } from "@/store/slices/usersSlice";
 
 export default function UsersList() {
   const dispatch = useAppDispatch();
@@ -162,6 +165,15 @@ export default function UsersList() {
   if (!latestAccessTokenRef.current) {
     return null;
   }
+  const handleUserUpdate = useCallback((updatedUser: UserWithDelete) => {
+    if (updatedUser.deleted) {
+      // Handle deletion
+      dispatch(removeUser(updatedUser.id));
+    } else {
+      // Handle update
+      dispatch(updateUser(updatedUser));
+    }
+  }, [dispatch]);
 
   return (
     <div>
@@ -176,6 +188,7 @@ export default function UsersList() {
         nextPageUrl={nextPageUrl}
         prevPageUrl={prevPageUrl}
         onPageChange={handlePageChange}
+        onUserUpdated={handleUserUpdate}
       />
     </div>
   );
