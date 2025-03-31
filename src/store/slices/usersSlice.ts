@@ -70,7 +70,7 @@ const usersSlice = createSlice({
       })
       .addCase(
         fetchUsersThunk.fulfilled,
-        (state, action: PayloadAction<PaginatedUserResponse>) => { // Fix the PayloadAction type
+        (state, action: PayloadAction<PaginatedUserResponse>) => { 
           state.loading = false;
           state.users = action.payload.results;
           state.count = action.payload.count;

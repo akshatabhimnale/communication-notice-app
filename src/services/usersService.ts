@@ -70,7 +70,7 @@ export const deleteUser = async (id: string): Promise<void> => {
   try {
     // Log the request before making it
     console.log(`Attempting to delete user with ID: ${id}`);
-    await userApiClient.delete(`/users/${id}`);
+    await userApiClient.delete(`/users/${id}/`);
     console.log(`Successfully deleted user with ID: ${id}`);
   } catch (error) {
     console.error(`Error deleting user ${id}:`, error);
