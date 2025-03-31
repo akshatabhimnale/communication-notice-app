@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_URLS } from "@/config/config";
-import { store, RootState } from "@/store";
+
+
 
 const userApiClient = axios.create({
   baseURL: API_URLS.USERS_SERVICE, 
@@ -13,16 +14,26 @@ export const setAuthorizationHeader = (token: string) => {
   userApiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 };
 
+
+let getState: () => any = () => ({ auth: { accessToken: null } });
+
+export const setStoreAccessor = (storeGetState: () => any) => {
+  getState = storeGetState;
+};
+
 userApiClient.interceptors.request.use((config) => {
   console.log('Full request URL:', `${config.baseURL ?? ''}${config.url}`);
-  const { auth } = store.getState() as RootState;
+  
+  // Use getState function instead of direct store access
+  const { auth } = getState();
+  
   if (auth.accessToken) {
     // Only set if not already set
     if (!config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${auth.accessToken}`;
     }
-    
   }
+  
   return config;
 });
 

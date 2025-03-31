@@ -105,10 +105,10 @@ export default function EditUserModal({
     try {
       
       const updatedUserData = {
-        ...user,                
-        ...formData,            
+        ...user,
+        ...formData,
         organization_id: user.organization_id,
-        id: user.id,            
+        id: user.id,
       };
       
       const updatedUser = await editUser(user.id, updatedUserData);
