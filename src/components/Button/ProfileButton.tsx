@@ -112,9 +112,6 @@ const ProfileButton = () => {
         >
           Go to Profile
         </StyledMenuItem>
-        <StyledMenuItem onClick={handleClose}>
-          Edit Profile
-        </StyledMenuItem>
       </StyledMenu>
     </>
   );
