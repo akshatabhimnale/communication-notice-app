@@ -2,7 +2,7 @@ import { AxiosError } from "axios";
 import authApiClient, { setAuthToken } from "@/services/apiClients/authApiClient";
 
 interface UserProfile {
-  id: number;
+  id: string;
   username: string;
   email: string;
   first_name: string;
@@ -10,13 +10,13 @@ interface UserProfile {
   phone?: string;
   role: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
     address: string;
     phone: string;
     created_at: string;
   };
-  organization_id: number;
+  organization_id: string;
 }
 
 const getTokenFromCookie = (): string | null => {
@@ -66,8 +66,8 @@ export const fetchUserProfile = async (): Promise<UserProfile> => {
 };
 
 export const updateUserProfile = async (
-  userId: number,
-  updates: Partial<Pick<UserProfile, "username" | "email" | "phone"> & { organization_id: number }>
+  userId: string,
+  updates: Partial<Pick<UserProfile, "username" | "email" | "phone"> & { organization_id: string }>
 ): Promise<UserProfile> => {
   const token = getTokenFromCookie();
 
