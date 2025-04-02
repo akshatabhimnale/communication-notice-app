@@ -1,9 +1,7 @@
-// src/app/(dashboard)/admin/notice-types/create.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSelector } from "react-redux";
 import {
   Container,
   Typography,
@@ -11,18 +9,36 @@ import {
   Button,
   Box,
 } from "@mui/material";
-import { RootState } from "@/store";
+import { fetchUserProfile } from "@/services/userService";
 
 export default function CreateNoticeType() {
   const router = useRouter();
-  const orgId = useSelector((state: RootState) => state.user.organization_id);
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     dynamic_schema: "",
+    organization_id: "", 
   });
+
   const [errors, setErrors] = useState({ name: "", dynamic_schema: "" });
+
+  useEffect(() => {
+    const getOrgId = async () => {
+      try {
+        const userProfile = await fetchUserProfile(); 
+        const orgId = userProfile.organization_id || userProfile.organization?.id;
+        if (orgId) {
+          setFormData((prev) => ({ ...prev, organization_id: orgId }));
+        } else {
+          setErrors((prev) => ({ ...prev, dynamic_schema: "Couldn’t find your organization id!" }));
+        }
+      } catch (err) {
+        setErrors((prev) => ({ ...prev, dynamic_schema: "Oops! Something went wrong getting your info." }));
+      }
+    };
+    getOrgId();
+  }, []);
 
   const validateForm = () => {
     let valid = true;
@@ -35,7 +51,7 @@ export default function CreateNoticeType() {
 
     if (formData.dynamic_schema) {
       try {
-        JSON.parse(formData.dynamic_schema);
+        JSON.parse(formData.dynamic_schema); 
       } catch (e) {
         newErrors.dynamic_schema = "Dynamic Schema must be valid JSON";
         valid = false;
@@ -51,12 +67,8 @@ export default function CreateNoticeType() {
 
   const handleSubmit = () => {
     if (validateForm()) {
-      const dataToSubmit = {
-        ...formData,
-        organization_id: orgId,
-      };
-      console.log("Form data:", dataToSubmit);
-      router.push("/admin/notice-types");
+      console.log("Here’s our notice-type data:", formData); 
+      router.push("/admin/notice-types"); 
     }
   };
 
