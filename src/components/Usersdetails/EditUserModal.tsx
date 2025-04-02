@@ -74,7 +74,6 @@ export default function EditUserModal({
       errors.username = "Username is required";
       isValid = false;
     }
-
     // Validate email
     if (!formData.email.trim()) {
       errors.email = "Email is required";
@@ -83,13 +82,11 @@ export default function EditUserModal({
       errors.email = "Email is invalid";
       isValid = false;
     }
-
     // Validate phone (optional validation)
     if (formData.phone && !/^\+?[0-9\s\-\(\)]{8,20}$/.test(formData.phone)) {
       errors.phone = "Phone number format is invalid";
       isValid = false;
     }
-
     setFormErrors(errors);
     return isValid;
   };
@@ -98,12 +95,9 @@ export default function EditUserModal({
     if (!validateForm()) {
       return;
     }
-
     setLoading(true);
     setError(null);
-
     try {
-      
       const updatedUserData = {
         ...user,
         ...formData,
@@ -111,9 +105,19 @@ export default function EditUserModal({
         id: user.id,
       };
       
+      // Call the API to update the user
       const updatedUser = await editUser(user.id, updatedUserData);
-      onUserUpdated(updatedUser);
-      setOpen(false);
+      
+      // Create a new object to ensure reference change detection
+      const updatedUserWithNewRef = { ...updatedUser };
+      
+      // Send the updated user to the parent component
+      onUserUpdated(updatedUserWithNewRef);
+      
+      // Add a small delay before closing the modal to ensure state updates propagate
+      setTimeout(() => {
+        setOpen(false);
+      }, 100);
     } catch (err) {
       console.error("Edit user error:", err);
       setError(err instanceof Error ? err.message : "Failed to update user");

@@ -166,12 +166,20 @@ export default function UsersList() {
     return null;
   }
   const handleUserUpdate = useCallback((updatedUser: UserWithDelete) => {
+    console.log("Update received:", updatedUser);
+    
     if (updatedUser.deleted) {
       // Handle deletion
       dispatch(removeUser(updatedUser.id));
     } else {
-      // Handle update
+      // Handle update with debugging
+      console.log("Dispatching user update:", updatedUser);
       dispatch(updateUser(updatedUser));
+      
+      // Force a data refresh after a short delay
+      setTimeout(() => {
+        dispatch(userSlice.fetchUsersThunk(undefined));
+      }, 200);
     }
   }, [dispatch]);
 

@@ -29,7 +29,7 @@ const initialState: UserState = {
   error: null,
   count: 0,
   nextPageUrl: null,
-  prevPageUrl: null
+  prevPageUrl: null,
 };
 
 export const fetchUsersThunk = createAsyncThunk(
@@ -41,7 +41,9 @@ export const fetchUsersThunk = createAsyncThunk(
     } catch (error: unknown) {
       const axiosError = error as AxiosError;
       const status = axiosError.response?.status;
-      const message = (axiosError.response?.data as { message?: string })?.message || "Failed to fetch users";
+      const message =
+        (axiosError.response?.data as { message?: string })?.message ||
+        "Failed to fetch users";
       return rejectWithValue({ status, message });
     }
   }
@@ -51,16 +53,17 @@ const usersSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    
-    updateUser: (state, action: PayloadAction<User>) => {
-      const index = state.users.findIndex(user => user.id === action.payload.id);
-      if (index !== -1) {
-        state.users[index] = action.payload;
-      }
-    },
+    // This should be creating a new array reference when updating an item
+    // In usersSlice.ts
+updateUser: (state, action: PayloadAction<User>) => {
+  const updatedUsers = state.users.map(user => 
+    user.id === action.payload.id ? { ...action.payload } : user
+  );
+  state.users = updatedUsers; // Assign new array reference
+},
     removeUser: (state, action: PayloadAction<string>) => {
-      state.users = state.users.filter(user => user.id !== action.payload);
-    }
+      state.users = state.users.filter((user) => user.id !== action.payload);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -70,7 +73,7 @@ const usersSlice = createSlice({
       })
       .addCase(
         fetchUsersThunk.fulfilled,
-        (state, action: PayloadAction<PaginatedUserResponse>) => { 
+        (state, action: PayloadAction<PaginatedUserResponse>) => {
           state.loading = false;
           state.users = action.payload.results;
           state.count = action.payload.count;
