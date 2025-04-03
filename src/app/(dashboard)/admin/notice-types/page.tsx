@@ -9,7 +9,7 @@ import {
   Button,
   Box,
 } from "@mui/material";
-import { fetchUserProfile } from "@/services/userService";
+import { fetchUserProfile, createNoticeType } from "@/services/userService";
 
 export default function CreateNoticeType() {
   const router = useRouter();
@@ -17,8 +17,8 @@ export default function CreateNoticeType() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    dynamic_schema: "",
-    organization_id: "", 
+    dynamic_schema: '{"type": "event"}',
+    org_id: "",
   });
 
   const [errors, setErrors] = useState({ name: "", dynamic_schema: "" });
@@ -26,12 +26,12 @@ export default function CreateNoticeType() {
   useEffect(() => {
     const getOrgId = async () => {
       try {
-        const userProfile = await fetchUserProfile(); 
+        const userProfile = await fetchUserProfile();
         const orgId = userProfile.organization_id || userProfile.organization?.id;
         if (orgId) {
-          setFormData((prev) => ({ ...prev, organization_id: orgId }));
+          setFormData((prev) => ({ ...prev, org_id: orgId }));
         } else {
-          setErrors((prev) => ({ ...prev, dynamic_schema: "Couldn’t find your organization id!" }));
+          setErrors((prev) => ({ ...prev, dynamic_schema: "Couldn’t find your club number!" }));
         }
       } catch (err) {
         setErrors((prev) => ({ ...prev, dynamic_schema: "Oops! Something went wrong getting your info." }));
@@ -47,11 +47,14 @@ export default function CreateNoticeType() {
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
       valid = false;
+    } else if (formData.name.length > 100) {
+      newErrors.name = "Name must be 100 characters or less";
+      valid = false;
     }
 
     if (formData.dynamic_schema) {
       try {
-        JSON.parse(formData.dynamic_schema); 
+        JSON.parse(formData.dynamic_schema);
       } catch (e) {
         newErrors.dynamic_schema = "Dynamic Schema must be valid JSON";
         valid = false;
@@ -61,14 +64,32 @@ export default function CreateNoticeType() {
       valid = false;
     }
 
+    if (!formData.org_id) {
+      newErrors.dynamic_schema = "Organization ID is missing!";
+      valid = false;
+    }
+
     setErrors(newErrors);
     return valid;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      console.log("Here’s our notice-type data:", formData); 
-      router.push("/admin/notice-types"); 
+      try {
+        const noticeData = {
+          org_id: formData.org_id,
+          name: formData.name,
+          description: formData.description || undefined,
+          dynamic_schema: JSON.parse(formData.dynamic_schema),
+        };
+        await createNoticeType(noticeData);
+        router.push("/admin/notice-types");
+      } catch (err) {
+        setErrors((prev) => ({
+          ...prev,
+          dynamic_schema: err instanceof Error ? err.message : "Failed to save the notice type!",
+        }));
+      }
     }
   };
 
@@ -81,28 +102,30 @@ export default function CreateNoticeType() {
         <TextField
           label="Name"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
           fullWidth
           error={!!errors.name}
-          helperText={errors.name}
+          helperText={errors.name || "Required, max 100 characters"}
+          inputProps={{ maxLength: 100 }}
         />
         <TextField
           label="Description"
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
           fullWidth
           multiline
           rows={2}
+          helperText="Optional"
         />
         <TextField
           label="Dynamic Schema (JSON)"
           value={formData.dynamic_schema}
-          onChange={(e) => setFormData({ ...formData, dynamic_schema: e.target.value })}
+          onChange={(e) => setFormData((prev) => ({ ...prev, dynamic_schema: e.target.value }))}
           fullWidth
           multiline
           rows={4}
           error={!!errors.dynamic_schema}
-          helperText={errors.dynamic_schema}
+          helperText={errors.dynamic_schema || "Required, e.g., {\"type\": \"event\"}"}
         />
         <Box sx={{ display: "flex", gap: 2 }}>
           <Button variant="contained" color="primary" onClick={handleSubmit}>
