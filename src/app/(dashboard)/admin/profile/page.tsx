@@ -16,7 +16,7 @@ import {
 import { fetchUserProfile, updateCurrentUserProfile } from "@/services/userService";
 import { styles } from "./profileStyles"; 
 interface UserProfile {
-  id: number;
+  id: string;
   username: string;
   email: string;
   first_name: string;
@@ -24,13 +24,13 @@ interface UserProfile {
   phone?: string;
   role: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
     address: string;
     phone: string;
     created_at: string;
   };
-  organization_id: number;
+  organization_id: string;
 }
 
 export default function ProfilePage() {
