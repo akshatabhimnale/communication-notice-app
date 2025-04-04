@@ -1,5 +1,4 @@
 import ReduxProvider from "@/store/Provider";
-import AssignmentIcon from "@mui/icons-material/Assignment";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { NextAppProvider } from "@toolpad/core/nextjs";
@@ -28,48 +27,53 @@ const NAVIGATION: Navigation = [
     segment: "",
   },
   {
-    title: "Notice Management",
+    title: "Notice Type",
     icon: <NotificationsIcon />,
-    segment: "notice-management",
+    segment: "admin/notice-types",
+    // children: [
+    //   {
+    //     title: "Add New",
+    //     icon: <AssignmentIcon />,
+    //     segment: "create",
+    //   },
+    //   {
+    //     title: "List All",
+    //     icon: <AssignmentIcon />,
+    //     segment: "",
+    //   },
+    // ],
+  },
+  {
+    title: "User Actions",
+    icon: <DescriptionIcon />,
+    segment: "admin",
     children: [
       {
-        title: "Notice Types",
-        icon: <AssignmentIcon />,
-        segment: "notice-types",
+        title: "Bulk Upload",
+        icon: <CloudUploadIcon />,
+        segment: "",
       },
       {
-        title: "Notices",
-        icon: <DescriptionIcon />,
-        segment: "notices",
-        children: [
-          {
-            title: "Bulk Upload",
-            icon: <CloudUploadIcon />,
-            segment: "bulk-upload",
-          },
-          {
-            title: "Bulk Send",
-            icon: <SendIcon />,
-            segment: "bulk-send",
-          },
-          {
-            title: "View Notices",
-            icon: <VisibilityIcon />,
-            segment: "view-notices",
-          },
-        ],
+        title: "Bulk Send",
+        icon: <SendIcon />,
+        segment: "",
+      },
+      {
+        title: "View Notices",
+        icon: <VisibilityIcon />,
+        segment: "",
       },
     ],
   },
   {
     title: "Templates",
     icon: <LayersIcon />,
-    segment: "templates",
+    segment: "",
   },
   {
     title: "Reports",
     icon: <BarChartIcon />,
-    segment: "reports",
+    segment: "",
   },
   {
     title: "User Management",

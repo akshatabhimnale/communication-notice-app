@@ -1,8 +1,9 @@
 import { AxiosError } from "axios";
 import authApiClient, { setAuthToken } from "@/services/apiClients/authApiClient";
+import noticeApiClient from "./apiClients/noticeApiClient";
 
 interface UserProfile {
-  id: number;
+  id: string;
   username: string;
   email: string;
   first_name: string;
@@ -10,13 +11,20 @@ interface UserProfile {
   phone?: string;
   role: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
     address: string;
     phone: string;
     created_at: string;
   };
-  organization_id: number;
+  organization_id: string;
+}
+
+interface NoticeType {
+  org_id: string;
+  name: string;
+  description?: string;
+  dynamic_schema: object;
 }
 
 const getTokenFromCookie = (): string | null => {
@@ -41,7 +49,6 @@ export const fetchUserProfile = async (): Promise<UserProfile> => {
   try {
     const decodedToken = JSON.parse(atob(token.split(".")[1]));
     const userId = decodedToken.user_id;
-
     setAuthToken(token);
     const response = await authApiClient.get(`/users/${userId}/`);
     return response.data.data;
@@ -66,8 +73,8 @@ export const fetchUserProfile = async (): Promise<UserProfile> => {
 };
 
 export const updateUserProfile = async (
-  userId: number,
-  updates: Partial<Pick<UserProfile, "username" | "email" | "phone"> & { organization_id: number }>
+  userId: string,
+  updates: Partial<Pick<UserProfile, "username" | "email" | "phone"> & { organization_id: string }>
 ): Promise<UserProfile> => {
   const token = getTokenFromCookie();
 
@@ -113,4 +120,31 @@ export const updateCurrentUserProfile = async (
   };
 
   return updateUserProfile(currentProfile.id, payload);
+};
+
+export const createNoticeType = async (noticeData: NoticeType): Promise<NoticeType> => {
+  const token = getTokenFromCookie();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in.");
+  }
+  try {
+    console.log("Sending to server:", noticeData);
+    const response = await noticeApiClient.post("/notice-types/", noticeData); 
+    console.log("Server response:", response.data);
+    return response.data;
+  } catch (err: unknown) {
+    if (err instanceof AxiosError) {
+      console.error("Full error:", err.response?.data, err.config);
+      if (err.response?.status === 401) {
+        clearTokenCookie();
+        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+      }
+      throw new Error(
+        err.response
+          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+          : "Network Error: Unable to reach the server"
+      );
+    }
+    throw new Error("An unexpected error occurred");
+  }
 };
