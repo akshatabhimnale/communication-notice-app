@@ -1,6 +1,5 @@
 import { AxiosError } from "axios";
 import authApiClient, { setAuthToken } from "@/services/apiClients/authApiClient";
-import noticeApiClient from "./apiClients/noticeApiClient";
 
 interface UserProfile {
   id: string;
@@ -20,14 +19,8 @@ interface UserProfile {
   organization_id: string;
 }
 
-interface NoticeType {
-  org_id: string;
-  name: string;
-  description?: string;
-  dynamic_schema: object;
-}
 
-const getTokenFromCookie = (): string | null => {
+export const getTokenFromCookie = (): string | null => {
   const cookies = document.cookie.split("; ");
   const accessTokenCookie = cookies.find((cookie) =>
     cookie.startsWith("accessToken=")
@@ -35,7 +28,7 @@ const getTokenFromCookie = (): string | null => {
   return accessTokenCookie ? accessTokenCookie.split("=")[1] : null;
 };
 
-const clearTokenCookie = () => {
+export const clearTokenCookie = () => {
   document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure";
 };
 
@@ -120,31 +113,4 @@ export const updateCurrentUserProfile = async (
   };
 
   return updateUserProfile(currentProfile.id, payload);
-};
-
-export const createNoticeType = async (noticeData: NoticeType): Promise<NoticeType> => {
-  const token = getTokenFromCookie();
-  if (!token) {
-    throw new Error("No authentication token found. Please log in.");
-  }
-  try {
-    console.log("Sending to server:", noticeData);
-    const response = await noticeApiClient.post("/notice-types/", noticeData); 
-    console.log("Server response:", response.data);
-    return response.data;
-  } catch (err: unknown) {
-    if (err instanceof AxiosError) {
-      console.error("Full error:", err.response?.data, err.config);
-      if (err.response?.status === 401) {
-        clearTokenCookie();
-        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
-      }
-      throw new Error(
-        err.response
-          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
-          : "Network Error: Unable to reach the server"
-      );
-    }
-    throw new Error("An unexpected error occurred");
-  }
 };
