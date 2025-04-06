@@ -161,12 +161,15 @@ export default function UsersList() {
     }
   }, [dispatch, usersLoading]);
 
+  const handleUserUpdate = useCallback((updatedUser: UserWithDelete) => {
+    console.log("Update received:", updatedUser);
+    
   // Render nothing if no access token
   if (!latestAccessTokenRef.current) {
     return null;
   }
-  const handleUserUpdate = useCallback((updatedUser: UserWithDelete) => {
-    console.log("Update received:", updatedUser);
+  // const handleUserUpdate = useCallback((updatedUser: UserWithDelete) => {
+  //   console.log("Update received:", updatedUser);
     
     if (updatedUser.deleted) {
       // Handle deletion
