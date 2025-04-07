@@ -1,7 +1,12 @@
 import axios from "axios";
 import { API_URLS } from "@/config/config";
 
-
+interface AuthState {
+  accessToken: string | null;
+}
+interface StoreState {
+  auth: AuthState;
+}
 
 const userApiClient = axios.create({
   baseURL: API_URLS.USERS_SERVICE, 
@@ -15,9 +20,9 @@ export const setAuthorizationHeader = (token: string) => {
 };
 
 
-let getState: () => any = () => ({ auth: { accessToken: null } });
+let getState: () => StoreState = () => ({ auth: { accessToken: null } });
 
-export const setStoreAccessor = (storeGetState: () => any) => {
+export const setStoreAccessor = (storeGetState: () => StoreState) => {
   getState = storeGetState;
 };
 
