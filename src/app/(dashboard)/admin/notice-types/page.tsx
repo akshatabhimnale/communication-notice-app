@@ -111,10 +111,7 @@ export default function NoticeTypesList() {
   }
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", my: 4 }}>
-      {/* <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
-        Notice Types
-      </Typography> */}
+    <Box sx={{ maxWidth: 1200, mx: "auto", }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <TextField
           label="Search by Name"
@@ -140,10 +137,10 @@ export default function NoticeTypesList() {
         <DataGrid
           rows={filteredNoticeTypes}
           columns={columns}
-          pageSizeOptions={[5, 10, 20]}
+          pageSizeOptions={[7,10,15,20]}
           initialState={{
             pagination: {
-              paginationModel: { pageSize: 5, page: 0 },
+              paginationModel: { pageSize: 7, page: 0 },
             },
           }}
           disableRowSelectionOnClick
