@@ -12,15 +12,15 @@ import {
   FormControlLabel,
   Button,
   Typography,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  IconButton,
-  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 
 interface Field {
   field_name: string;
@@ -56,7 +56,15 @@ export default function DynamicFieldBuilder({
   }));
 
   const [fields, setFields] = useState<Field[]>(initialFields.length ? initialFields : []);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [newField, setNewField] = useState<Field>({
+    field_name: "",
+    label: "",
+    type: "text",
+    required: false,
+  });
 
   const updateSchema = (updatedFields: Field[]) => {
     const schema: Schema = updatedFields.reduce((acc: Schema, field) => {
@@ -70,47 +78,54 @@ export default function DynamicFieldBuilder({
     onSchemaChange(schema);
   };
 
-  const addField = () => {
-    const newField: Field = { field_name: "", label: "", type: "text", required: false };
-    const updatedFields = [...fields, newField];
-    setFields(updatedFields);
-    updateSchema(updatedFields);
+  const validateField = (field: Field, allFields: Field[], currentIndex?: number) => {
+    const errors: { [key: string]: string } = {};
+    if (!field.field_name.trim()) {
+      errors.field_name = "Field name cannot be empty";
+    } else if (
+      allFields.some(
+        (f, i) => f.field_name.trim() === field.field_name.trim() && i !== currentIndex
+      )
+    ) {
+      errors.field_name = "Field name must be unique";
+    }
+    return errors;
+  };
+
+  const handleAddOrEditField = () => {
+    const allFields = editIndex !== null ? fields : [...fields, newField];
+    const currentIndex = editIndex !== null ? editIndex : fields.length;
+    const validationErrors = validateField(newField, allFields, currentIndex);
+
+    if (Object.keys(validationErrors).length === 0) {
+      const updatedFields = [...fields];
+      if (editIndex !== null) {
+        updatedFields[editIndex] = newField;
+      } else {
+        updatedFields.push(newField);
+      }
+      setFields(updatedFields);
+      updateSchema(updatedFields);
+      setNewField({ field_name: "", label: "", type: "text", required: false });
+      setOpenDialog(false);
+      setEditIndex(null);
+      setErrors({});
+    } else {
+      setErrors(validationErrors);
+    }
   };
 
   const removeField = (index: number) => {
     const updatedFields = fields.filter((_, i) => i !== index);
     setFields(updatedFields);
     updateSchema(updatedFields);
-    validateFields(updatedFields);
   };
 
-  const updateField = (
-    index: number,
-    key: keyof Field,
-    value: string | "text" | "number" | "date" | "boolean" | boolean
-  ) => {
-    const updatedFields = fields.map((field, i) =>
-      i === index ? { ...field, [key]: value } : field
-    );
-    setFields(updatedFields);
-    updateSchema(updatedFields);
-    validateFields(updatedFields);
-  };
-
-  const validateFields = (fieldsToValidate: Field[]) => {
-    const newErrors: string[] = [];
-    const fieldNames = fieldsToValidate.map((f) => f.field_name.trim());
-
-    fieldsToValidate.forEach((field, index) => {
-      if (!field.field_name.trim()) {
-        newErrors[index] = "Field name cannot be empty";
-      } else if (fieldNames.indexOf(field.field_name.trim()) !== index) {
-        newErrors[index] = "Field name must be unique";
-      }
-    });
-
-    setErrors(newErrors);
-    return newErrors.length === 0;
+  const openEditDialog = (index: number) => {
+    setNewField(fields[index]);
+    setEditIndex(index);
+    setOpenDialog(true);
+    setErrors({});
   };
 
   const schemaPreview = JSON.stringify(
@@ -127,115 +142,118 @@ export default function DynamicFieldBuilder({
   );
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", mt: 0, mb: 2, px: 2 }}>
-      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-        Dynamic Schema Builder
-      </Typography>
-      <Grid container spacing={26} alignItems="stretch">
-        <Grid item xs={12} md={6}>
-          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
-              Schema Preview
-            </Typography>
-            <TextField
-              value={schemaPreview}
-              fullWidth
-              multiline
-              rows={8}
-              InputProps={{ readOnly: true }}
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {/* Heading with Add Button */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Typography variant="h6">Dynamic Schema Builder</Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            setNewField({ field_name: "", label: "", type: "text", required: false });
+            setEditIndex(null);
+            setOpenDialog(true);
+            setErrors({});
+          }}
+          size="medium"
+        >
+          Add Field
+        </Button>
+      </Box>
+
+      {/* Horizontal Field List */}
+      {fields.length === 0 ? (
+        <Typography color="text.secondary">No fields added yet.</Typography>
+      ) : (
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+          {fields.map((field, index) => (
+            <Chip
+              key={index}
+              label={`${field.field_name} (${field.type}${field.required ? ", required" : ""})`}
+              onClick={() => openEditDialog(index)}
+              onDelete={() => removeField(index)}
+              deleteIcon={<DeleteIcon />}
+              icon={<EditIcon />}
+              color="primary"
               variant="outlined"
+              sx={{ px: 1 }}
+            />
+          ))}
+        </Box>
+      )}
+
+      {/* Schema Preview */}
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>
+          Schema Preview
+        </Typography>
+        <TextField
+          value={schemaPreview}
+          fullWidth
+          multiline
+          rows={6}
+          InputProps={{ readOnly: true }}
+          variant="outlined"
+          size="small"
+          sx={{ fontFamily: "monospace" }}
+        />
+      </Box>
+
+      {/* Field Dialog */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>{editIndex !== null ? "Edit Field" : "Add New Field"}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+            <TextField
+              label="Field Name"
+              value={newField.field_name}
+              onChange={(e) => setNewField({ ...newField, field_name: e.target.value })}
+              fullWidth
+              error={!!errors.field_name}
+              helperText={errors.field_name || "Unique code (e.g., due_date)"}
               size="small"
-              sx={{ fontFamily: "monospace", flexGrow: 1, minHeight: 0 }}
+            />
+            <TextField
+              label="Label"
+              value={newField.label}
+              onChange={(e) => setNewField({ ...newField, label: e.target.value })}
+              fullWidth
+              helperText="Display name (e.g., Due Date)"
+              size="small"
+            />
+            <FormControl fullWidth size="small">
+              <InputLabel>Type</InputLabel>
+              <Select
+                value={newField.type}
+                onChange={(e) => setNewField({ ...newField, type: e.target.value as Field["type"] })}
+                label="Type"
+              >
+                <MenuItem value="text">Text</MenuItem>
+                <MenuItem value="number">Number</MenuItem>
+                <MenuItem value="date">Date</MenuItem>
+                <MenuItem value="boolean">Boolean</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={newField.required}
+                  onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
+                />
+              }
+              label="Required"
             />
           </Box>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Box sx={{ display: "flex", flexDirection: "column", height: "100%", pr: 4 }}>
-            {fields.length === 0 ? (
-              <Typography color="text.secondary" sx={{ py: 2 }}>
-                No fields yet. Add one to start building!
-              </Typography>
-            ) : (
-              fields.map((field, index) => (
-                <Accordion
-                  key={index}
-                  defaultExpanded={!field.field_name}
-                  sx={{ mb: 2 }}
-                >
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography>
-                      {field.field_name || `Field ${index + 1}`} {field.required && "(Required)"}
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, py: 1 }}>
-                      <TextField
-                        label="Field Name"
-                        value={field.field_name}
-                        onChange={(e) => updateField(index, "field_name", e.target.value)}
-                        fullWidth
-                        error={!!errors[index]}
-                        helperText={errors[index] || "Unique code (e.g., due_date)"}
-                        size="small"
-                      />
-                      <TextField
-                        label="Label"
-                        value={field.label}
-                        onChange={(e) => updateField(index, "label", e.target.value)}
-                        fullWidth
-                        helperText="Display name (e.g., Due Date)"
-                        size="small"
-                      />
-                      <FormControl fullWidth size="small">
-                        <InputLabel>Type</InputLabel>
-                        <Select
-                          value={field.type}
-                          onChange={(e) =>
-                            updateField(index, "type", e.target.value as Field["type"])
-                          }
-                          label="Type"
-                        >
-                          <MenuItem value="text">Text</MenuItem>
-                          <MenuItem value="number">Number</MenuItem>
-                          <MenuItem value="date">Date</MenuItem>
-                          <MenuItem value="boolean">Boolean</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={field.required}
-                            onChange={(e) => updateField(index, "required", e.target.checked)}
-                          />
-                        }
-                        label="Required"
-                        sx={{ mt: -1 }}
-                      />
-                      <IconButton
-                        color="error"
-                        onClick={() => removeField(index)}
-                        sx={{ alignSelf: "flex-end", mt: -1 }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </AccordionDetails>
-                </Accordion>
-              ))
-            )}
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={addField}
-              fullWidth
-              sx={{ mt: 3 }}
-            >
-              Add Field
-            </Button>
-          </Box>
-        </Grid>
-      </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleAddOrEditField} variant="contained" color="primary">
+            {editIndex !== null ? "Update" : "Add"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

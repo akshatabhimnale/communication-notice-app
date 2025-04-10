@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/notice-types/create/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -82,7 +81,7 @@ export default function CreateNoticeType() {
         await createNoticeType(noticeData);
         router.push("/admin/notice-types");
       } catch (err) {
-        const errorMessage=err instanceof Error ? err.message : "Failed to save the notice type!";   //resolved err error
+        const errorMessage=err instanceof Error ? err.message : "Failed to save the notice type!";   
         setErrors((prev) => ({
           ...prev,
           dynamic_schema: errorMessage,
@@ -92,7 +91,7 @@ export default function CreateNoticeType() {
   };
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="lg">
       <Typography variant="h4" gutterBottom>
         Create Notice Type
       </Typography>
@@ -117,7 +116,7 @@ export default function CreateNoticeType() {
         />
         <DynamicFieldBuilder
           onSchemaChange={(schema) => setFormData((prev) => ({ ...prev, dynamic_schema: schema }))}
-          initialSchema={{ type: { label: "Type", type: "text", required: true } }} // Example start
+          initialSchema={{ type: { label: "Type", type: "text", required: true } }} 
         />
         {errors.dynamic_schema && (
           <Typography color="error">{errors.dynamic_schema}</Typography>
