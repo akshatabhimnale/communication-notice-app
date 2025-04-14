@@ -89,6 +89,9 @@ export default function DynamicFieldBuilder({
     ) {
       errors.field_name = "Field name must be unique";
     }
+    if (!field.label.trim()) {
+      errors.label = "Label cannot be empty";
+    }
     return errors;
   };
 
@@ -143,7 +146,6 @@ export default function DynamicFieldBuilder({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {/* Heading with Add Button */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h6">Dynamic Schema Builder</Typography>
         <Button
@@ -161,7 +163,6 @@ export default function DynamicFieldBuilder({
         </Button>
       </Box>
 
-      {/* Horizontal Field List */}
       {fields.length === 0 ? (
         <Typography color="text.secondary">No fields added yet.</Typography>
       ) : (
@@ -182,7 +183,6 @@ export default function DynamicFieldBuilder({
         </Box>
       )}
 
-      {/* Schema Preview */}
       <Box>
         <Typography variant="subtitle1" gutterBottom>
           Schema Preview
@@ -199,7 +199,6 @@ export default function DynamicFieldBuilder({
         />
       </Box>
 
-      {/* Field Dialog */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{editIndex !== null ? "Edit Field" : "Add New Field"}</DialogTitle>
         <DialogContent>
@@ -218,7 +217,8 @@ export default function DynamicFieldBuilder({
               value={newField.label}
               onChange={(e) => setNewField({ ...newField, label: e.target.value })}
               fullWidth
-              helperText="Display name (e.g., Due Date)"
+              error={!!errors.label}
+              helperText={errors.label || "Display name (e.g., Due Date)"}
               size="small"
             />
             <FormControl fullWidth size="small">
