@@ -274,3 +274,29 @@ export const updateNoticeType = async (
     throw new Error("An unexpected error occurred");
   }
 };
+
+
+export const deleteNoticeType = async (id: string): Promise<void> => {
+  const token = getTokenFromCookie();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in.");
+  }
+  try {
+    await noticeApiClient.delete(`/notice-types/${id}/`);
+    console.log(`Deleted notice type: id=${id}`);
+  } catch (err: unknown) {
+    if (err instanceof AxiosError) {
+      console.error("Full error:", err.response?.data, err.config);
+      if (err.response?.status === 401) {
+        clearTokenCookie();
+        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+      }
+      throw new Error(
+        err.response
+          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+          : "Network Error: Unable to reach the server"
+      );
+    }
+    throw new Error("An unexpected error occurred");
+  }
+};

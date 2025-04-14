@@ -3,13 +3,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
-import { fetchNoticeTypes, NoticeType, PaginatedResponse, DynamicSchema } from "@/services/noticeService";
+import { fetchNoticeTypes, deleteNoticeType, NoticeType, PaginatedResponse, DynamicSchema } from "@/services/noticeService";
 import {
   Box,
   Button,
   CircularProgress,
   TextField,
   Typography,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
 
 export default function NoticeTypesList() {
@@ -25,6 +30,10 @@ export default function NoticeTypesList() {
   });
   const [totalRows, setTotalRows] = useState(0);
   const [hasFetchedAll, setHasFetchedAll] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [noticeToDelete, setNoticeToDelete] = useState<NoticeType | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadNotices = useCallback(async () => {
     setLoading(true);
@@ -108,6 +117,35 @@ export default function NoticeTypesList() {
     setPaginationModel((prev) => ({ ...prev, page: 0 })); // Reset to first page for search results
   };
 
+  const handleDeleteClick = (notice: NoticeType) => {
+    setNoticeToDelete(notice);
+    setDeleteDialogOpen(true);
+    setDeleteError(null);
+  };
+
+  const handleDeleteClose = () => {
+    setDeleteDialogOpen(false);
+    setNoticeToDelete(null);
+    setDeleteError(null);
+    setDeleting(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!noticeToDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteNoticeType(noticeToDelete.id);
+      setNoticeTypes((prev) => prev.filter((n) => n.id !== noticeToDelete.id));
+      setAllNoticeTypes((prev) => prev.filter((n) => n.id !== noticeToDelete.id));
+      setTotalRows((prev) => prev - 1);
+      handleDeleteClose();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete notice type");
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
@@ -151,72 +189,111 @@ export default function NoticeTypesList() {
           No notice types available
         </Typography>
       ) : (
-        <DataGrid
-          rows={search ? filteredNoticeTypes : noticeTypes}
-          columns={[
-            { field: "name", headerName: "Display Name", width: 200 },
-            { field: "id", headerName: "System Name", width: 250 },
-            {
-              field: "description",
-              headerName: "Description",
-              width: 300,
-              valueGetter: (params) => {
-                const description = params as string | null | undefined;
-                return description
-                  ? description.slice(0, 50) + (description.length > 50 ? "..." : "")
-                  : "No description available";
+        <>
+          <DataGrid
+            rows={search ? filteredNoticeTypes : noticeTypes}
+            columns={[
+              { field: "name", headerName: "Display Name", width: 200 },
+              { field: "id", headerName: "System Name", width: 250 },
+              {
+                field: "description",
+                headerName: "Description",
+                width: 300,
+                valueGetter: (params) => {
+                  const description = params as string | null | undefined;
+                  return description
+                    ? description.slice(0, 50) + (description.length > 50 ? "..." : "")
+                    : "No description available";
+                },
               },
-            },
-            {
-              field: "dynamic_schema",
-              headerName: "Fields Count",
-              width: 150,
-              valueGetter: (params: DynamicSchema) => {
-                const fieldKeys = Object.keys(params.fields || {});
-                // console.log(`Fields Count for dynamic_schema: keys=${JSON.stringify(fieldKeys)}`);
-                return fieldKeys.length;
+              {
+                field: "dynamic_schema",
+                headerName: "Fields Count",
+                width: 150,
+                valueGetter: (params: DynamicSchema) => {
+                  const fieldKeys = Object.keys(params.fields || {});
+                  // console.log(`Fields Count for dynamic_schema: keys=${JSON.stringify(fieldKeys)}`);
+                  return fieldKeys.length;
+                },
               },
-            },
-            {
-              field: "actions",
-              headerName: "Actions",
-              width: 150,
-              renderCell: (params: GridRenderCellParams<NoticeType>) => {
-                if (!params.row) {
-                  console.error("params.row is undefined in actions renderCell", params);
-                  return <Box>Invalid Row</Box>;
-                }
-                return (
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="primary"
-                      onClick={() => router.push(`/admin/notice-types/${params.row.id}/edit`)}
-                    >
-                      Edit
-                    </Button>
-                    <Button size="small" variant="outlined" color="error">
-                      Delete
-                    </Button>
-                  </Box>
-                );
+              {
+                field: "actions",
+                headerName: "Actions",
+                width: 150,
+                renderCell: (params: GridRenderCellParams<NoticeType>) => {
+                  if (!params.row) {
+                    console.error("params.row is undefined in actions renderCell", params);
+                    return <Box>Invalid Row</Box>;
+                  }
+                  return (
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => router.push(`/admin/notice-types/${params.row.id}/edit`)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        onClick={() => handleDeleteClick(params.row)}
+                      >
+                        Delete
+                      </Button>
+                    </Box>
+                  );
+                },
               },
-            },
-          ]}
-          rowCount={search ? filteredNoticeTypes.length : totalRows}
-          paginationMode={search ? "client" : "server"}
-          paginationModel={paginationModel}
-          onPaginationModelChange={handlePaginationModelChange}
-          pageSizeOptions={[10]} // API fixed at 10 items per page
-          disableRowSelectionOnClick
-          autoHeight
-          getRowId={(row) => row.id}
-          sx={{
-            "& .MuiDataGrid-columnHeaders": { backgroundColor: "#f5f5f5" },
-            "& .MuiDataGrid-cell": { py: 1 },
-          }}
-        />
+            ]}
+            rowCount={search ? filteredNoticeTypes.length : totalRows}
+            paginationMode={search ? "client" : "server"}
+            paginationModel={paginationModel}
+            onPaginationModelChange={handlePaginationModelChange}
+            pageSizeOptions={[10]} // API fixed at 10 items per page
+            disableRowSelectionOnClick
+            autoHeight
+            getRowId={(row) => row.id}
+            sx={{
+              "& .MuiDataGrid-columnHeaders": { backgroundColor: "#f5f5f5" },
+              "& .MuiDataGrid-cell": { py: 1 },
+            }}
+          />
+          <Dialog
+            open={deleteDialogOpen}
+            onClose={handleDeleteClose}
+            disableEscapeKeyDown
+            aria-labelledby="delete-dialog-title"
+          >
+            <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+              Are you sure you want to delete the notice type &quot;{noticeToDelete?.name}&quot;?
+              This action cannot be undone.
+              </DialogContentText>
+              {deleteError && (
+                <Typography color="error" sx={{ mt: 2 }}>
+                  {deleteError}
+                </Typography>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleDeleteClose} disabled={deleting}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmDelete}
+                color="error"
+                disabled={deleting}
+                startIcon={deleting ? <CircularProgress size={20} /> : null}
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </>
       )}
     </Box>
   );
