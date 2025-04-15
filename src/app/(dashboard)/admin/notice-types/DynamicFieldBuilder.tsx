@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   TextField,
@@ -48,14 +48,18 @@ export default function DynamicFieldBuilder({
   onSchemaChange,
   initialSchema = {},
 }: DynamicFieldBuilderProps) {
-  const initialFields = Object.entries(initialSchema).map(([key, value]) => ({
-    field_name: key,
-    label: value.label || key,
-    type: value.type || "text",
-    required: value.required || false,
-  }));
+  const getInitialFields = (schema: Schema) => {
+    return Object.entries(schema)
+      .filter(([key]) => !key.includes(","))
+      .map(([key, value]) => ({
+        field_name: key,
+        label: value.label || key,
+        type: value.type || "text",
+        required: value.required || false,
+      }));
+  };
 
-  const [fields, setFields] = useState<Field[]>(initialFields.length ? initialFields : []);
+  const [fields, setFields] = useState<Field[]>(getInitialFields(initialSchema));
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [openDialog, setOpenDialog] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
@@ -65,11 +69,26 @@ export default function DynamicFieldBuilder({
     type: "text",
     required: false,
   });
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Validate and sync with initialSchema
+    const invalidKeys = Object.keys(initialSchema).filter((key) => key.includes(","));
+    if (invalidKeys.length > 0) {
+      setSchemaError(`Invalid field names detected: ${invalidKeys.join(", ")}`);
+      setFields([]);
+    } else {
+      setSchemaError(null);
+      const newFields = getInitialFields(initialSchema);
+      setFields(newFields);
+      // console.log("Fields updated:", JSON.stringify(newFields, null, 2));
+    }
+  }, [initialSchema]);
 
   const updateSchema = (updatedFields: Field[]) => {
     const schema: Schema = updatedFields.reduce((acc: Schema, field) => {
       acc[field.field_name] = {
-        label: field.label,
+        label: field.label || field.field_name, // Default to field_name if label empty
         type: field.type,
         required: field.required,
       };
@@ -88,9 +107,6 @@ export default function DynamicFieldBuilder({
       )
     ) {
       errors.field_name = "Field name must be unique";
-    }
-    if (!field.label.trim()) {
-      errors.label = "Label cannot be empty";
     }
     return errors;
   };
@@ -131,21 +147,28 @@ export default function DynamicFieldBuilder({
     setErrors({});
   };
 
-  const schemaPreview = JSON.stringify(
-    fields.reduce((acc, field) => {
-      acc[field.field_name] = {
-        label: field.label,
-        type: field.type,
-        required: field.required,
-      };
-      return acc;
-    }, {} as Schema),
-    null,
-    2
-  );
+  // Format schema for preview, show only CSV-derived fields
+  const formatSchemaPreview = (schema: Schema) => {
+    // Filter fields that match CSV-derived pattern (no manual edits unless from upload)
+    const csvDerivedSchema = Object.fromEntries(
+      Object.entries(schema).filter(([key]) => !fields.some((f) => f.field_name === key && !initialSchema[key]))
+    );
+    return JSON.stringify(csvDerivedSchema, null, 2)
+      .replace(/"/g, "")
+      .replace(/:/g, ": ")
+      .replace(/{/g, "{")
+      .replace(/}/g, "}")
+      .replace(/,/g, ", ")
+      .trim();
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {schemaError && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {schemaError}
+        </Typography>
+      )}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h6">Dynamic Schema Builder</Typography>
         <Button
@@ -183,20 +206,22 @@ export default function DynamicFieldBuilder({
         </Box>
       )}
 
-      <Box>
+      <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle1" gutterBottom>
           Schema Preview
         </Typography>
-        <TextField
-          value={schemaPreview}
-          fullWidth
-          multiline
-          rows={6}
-          InputProps={{ readOnly: true }}
-          variant="outlined"
-          size="small"
-          sx={{ fontFamily: "monospace" }}
-        />
+        <pre
+          style={{
+            background: "#f5f5f5",
+            padding: "10px",
+            borderRadius: "4px",
+            whiteSpace: "pre-wrap",
+            maxHeight: "200px",
+            overflowY: "auto",
+          }}
+        >
+          {formatSchemaPreview(initialSchema)}
+        </pre>
       </Box>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
@@ -217,8 +242,7 @@ export default function DynamicFieldBuilder({
               value={newField.label}
               onChange={(e) => setNewField({ ...newField, label: e.target.value })}
               fullWidth
-              error={!!errors.label}
-              helperText={errors.label || "Display name (e.g., Due Date)"}
+              helperText="Optional, defaults to field name"
               size="small"
             />
             <FormControl fullWidth size="small">
