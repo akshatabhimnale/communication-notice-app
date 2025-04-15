@@ -11,12 +11,17 @@ import {
 } from "@mui/material";
 import { fetchUserProfile } from "@/services/userService";
 import { createNoticeType } from "@/services/noticeService";
-import DynamicFieldBuilder from "@/app/(dashboard)/admin/notice-types/DynamicFieldBuilder"
+import DynamicFieldBuilder from "@/app/(dashboard)/admin/notice-types/DynamicFieldBuilder";
 
 export default function CreateNoticeType() {
   const router = useRouter();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string | null;
+    dynamic_schema: Record<string, { label: string; type: "text" | "number" | "date" | "boolean"; required: boolean }>;
+    org_id: string;
+  }>({
     name: "",
     description: "",
     dynamic_schema: {},
@@ -33,11 +38,11 @@ export default function CreateNoticeType() {
         if (orgId) {
           setFormData((prev) => ({ ...prev, org_id: orgId }));
         } else {
-          setErrors((prev) => ({ ...prev, dynamic_schema: "Couldn’t find your club number!" }));
+          setErrors((prev) => ({ ...prev, dynamic_schema: "Couldn’t find your club number" }));
         }
       } catch (error) {
         console.error("Error fetching user profile:", error);
-        setErrors((prev) => ({ ...prev, dynamic_schema: "Failed to fetch organization ID!" }));
+        setErrors((prev) => ({ ...prev, dynamic_schema: "Failed to fetch organization ID" }));
       }
     };
     getOrgId();
@@ -61,7 +66,7 @@ export default function CreateNoticeType() {
     }
 
     if (!formData.org_id) {
-      newErrors.dynamic_schema = "Organization ID is missing!";
+      newErrors.dynamic_schema = "Organization ID is missing";
       valid = false;
     }
 
@@ -70,23 +75,22 @@ export default function CreateNoticeType() {
   };
 
   const handleSubmit = async () => {
-    if (validateForm()) {
-      try {
-        const noticeData = {
-          org_id: formData.org_id,
-          name: formData.name,
-          description: formData.description || undefined,
-          dynamic_schema: formData.dynamic_schema,
-        };
-        await createNoticeType(noticeData);
-        router.push("/admin/notice-types");
-      } catch (err) {
-        const errorMessage=err instanceof Error ? err.message : "Failed to save the notice type!";   
-        setErrors((prev) => ({
-          ...prev,
-          dynamic_schema: errorMessage,
-        }));
-      }
+    if (!validateForm()) return;
+    try {
+      const noticeData = {
+        org_id: formData.org_id,
+        name: formData.name,
+        description: formData.description || null,
+        dynamic_schema: formData.dynamic_schema,
+      };
+      await createNoticeType(noticeData);
+      router.push("/admin/notice-types");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to save the notice type";
+      setErrors((prev) => ({
+        ...prev,
+        dynamic_schema: errorMessage,
+      }));
     }
   };
 
@@ -107,8 +111,8 @@ export default function CreateNoticeType() {
         />
         <TextField
           label="Description"
-          value={formData.description}
-          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+          value={formData.description ?? ""}
+          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value || null }))}
           fullWidth
           multiline
           rows={2}
@@ -116,7 +120,7 @@ export default function CreateNoticeType() {
         />
         <DynamicFieldBuilder
           onSchemaChange={(schema) => setFormData((prev) => ({ ...prev, dynamic_schema: schema }))}
-          initialSchema={{ type: { label: "Type", type: "text", required: true } }} 
+          initialSchema={{}}
         />
         {errors.dynamic_schema && (
           <Typography color="error">{errors.dynamic_schema}</Typography>
