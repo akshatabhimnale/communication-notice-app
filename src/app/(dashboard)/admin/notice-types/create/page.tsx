@@ -8,11 +8,9 @@ import {
   TextField,
   Button,
   Box,
-  Input,
-  CircularProgress,
 } from "@mui/material";
 import { fetchUserProfile } from "@/services/userService";
-import { createNoticeType, uploadSchemaFromCsv } from "@/services/noticeService";
+import { createNoticeType } from "@/services/noticeService";
 import DynamicFieldBuilder from "@/app/(dashboard)/admin/notice-types/DynamicFieldBuilder";
 
 export default function CreateNoticeType() {
@@ -31,8 +29,6 @@ export default function CreateNoticeType() {
   });
 
   const [errors, setErrors] = useState({ name: "", dynamic_schema: "" });
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     const getOrgId = async () => {
@@ -98,49 +94,6 @@ export default function CreateNoticeType() {
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.name.endsWith(".csv") && !file.name.endsWith(".xlsx")) {
-      setUploadError("Please upload a CSV or XLSX file");
-      return;
-    }
-    setUploading(true);
-    setUploadError(null);
-    try {
-      const schema = await uploadSchemaFromCsv(file);
-      // console.log("Raw schema from uploadSchemaFromCsv:", JSON.stringify(schema, null, 2));
-      // Validate schema
-      const isValidSchema = Object.keys(schema).every(
-        (key) =>
-          !key.includes(",") &&
-          schema[key].label &&
-          ["text", "number", "date", "boolean", "email"].includes(schema[key].type)
-      );
-      if (!isValidSchema) {
-        console.error("Invalid schema detected:", JSON.stringify(schema, null, 2));
-        setUploadError("Invalid schema: Field names may contain commas or types are incorrect");
-        return;
-      }
-      // Update formData
-      setFormData((prev) => ({
-        ...prev,
-        dynamic_schema: {
-          ...prev.dynamic_schema,
-          ...schema,
-        },
-      }));
-      // console.log("Updated formData.dynamic_schema:", JSON.stringify({ ...formData.dynamic_schema, ...schema }, null, 2));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to extract schema from file";
-      console.error("Upload error:", errorMessage);
-      setUploadError(errorMessage);
-    } finally {
-      setUploading(false);
-      event.target.value = "";
-    }
-  };
-
   return (
     <Container maxWidth="lg">
       <Typography variant="h4" gutterBottom>
@@ -165,27 +118,6 @@ export default function CreateNoticeType() {
           rows={2}
           helperText="Optional"
         />
-        <Box sx={{ my: 2 }}>
-          <Button
-            variant="contained"
-            component="label"
-            disabled={uploading}
-            startIcon={uploading ? <CircularProgress size={20} /> : null}
-          >
-            Upload CSV/XLSX (Optional)
-            <Input
-              type="file"
-              inputProps={{ accept: ".csv,.xlsx" }}
-              onChange={handleFileUpload}
-              sx={{ display: "none" }}
-            />
-          </Button>
-          {uploadError && (
-            <Typography color="error" sx={{ mt: 1 }}>
-              {uploadError}
-            </Typography>
-          )}
-        </Box>
         <DynamicFieldBuilder
           onSchemaChange={(schema) => setFormData((prev) => ({ ...prev, dynamic_schema: schema }))}
           initialSchema={formData.dynamic_schema}

@@ -17,10 +17,13 @@ import {
   DialogContent,
   DialogActions,
   Chip,
+  CircularProgress,
+  Input,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import { uploadSchemaFromCsv } from "@/services/noticeService";
 
 interface Field {
   field_name: string;
@@ -70,6 +73,8 @@ export default function DynamicFieldBuilder({
     required: false,
   });
   const [schemaError, setSchemaError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     // Validate and sync with initialSchema
@@ -81,7 +86,7 @@ export default function DynamicFieldBuilder({
       setSchemaError(null);
       const newFields = getInitialFields(initialSchema);
       setFields(newFields);
-      // console.log("Fields updated:", JSON.stringify(newFields, null, 2));
+      console.log("Fields updated:", JSON.stringify(newFields, null, 2));
     }
   }, [initialSchema]);
 
@@ -147,6 +152,30 @@ export default function DynamicFieldBuilder({
     setErrors({});
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith(".csv") && !file.name.endsWith(".xlsx")) {
+      setUploadError("Please upload a CSV or XLSX file");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const schema = await uploadSchemaFromCsv(file);
+      const newFields = getInitialFields(schema);
+      setFields((prev) => [...prev, ...newFields]);
+      updateSchema([...fields, ...newFields]);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to extract schema from file";
+      console.error("Upload error:", errorMessage);
+      setUploadError(errorMessage);
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
   // Format schema for preview, show only CSV-derived fields
   const formatSchemaPreview = (schema: Schema) => {
     // Filter fields that match CSV-derived pattern (no manual edits unless from upload)
@@ -171,20 +200,41 @@ export default function DynamicFieldBuilder({
       )}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h6">Dynamic Schema Builder</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setNewField({ field_name: "", label: "", type: "text", required: false });
-            setEditIndex(null);
-            setOpenDialog(true);
-            setErrors({});
-          }}
-          size="medium"
-        >
-          Add Field
-        </Button>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setNewField({ field_name: "", label: "", type: "text", required: false });
+              setEditIndex(null);
+              setOpenDialog(true);
+              setErrors({});
+            }}
+            size="medium"
+          >
+            Add Field
+          </Button>
+          <Button
+            variant="contained"
+            component="label"
+            disabled={uploading}
+            startIcon={uploading ? <CircularProgress size={20} /> : null}
+          >
+            Upload CSV/XLSX (Optional)
+            <Input
+              type="file"
+              inputProps={{ accept: ".csv,.xlsx" }}
+              onChange={handleFileUpload}
+              sx={{ display: "none" }}
+            />
+          </Button>
+        </Box>
       </Box>
+      {uploadError && (
+        <Typography color="error" sx={{ mt: 1 }}>
+          {uploadError}
+        </Typography>
+      )}
 
       {fields.length === 0 ? (
         <Typography color="text.secondary">No fields added yet.</Typography>
@@ -213,9 +263,11 @@ export default function DynamicFieldBuilder({
         <pre
           style={{
             background: "#f5f5f5",
+            border: "1px solid #ccc",
             padding: "10px",
             borderRadius: "4px",
             whiteSpace: "pre-wrap",
+            minHeight: "100px",
             maxHeight: "200px",
             overflowY: "auto",
           }}
