@@ -35,6 +35,13 @@ interface PaginatedUserResponse {
   results: User[];
 }
 
+/**
+ * Fetches a paginated list of users from the API.
+ *
+ * @param url - Optional. The specific API endpoint URL to fetch users from. Defaults to '/users/' if not provided.
+ * @returns A promise that resolves to a PaginatedUserResponse object containing the list of users and pagination details.
+ * @throws Will throw an error if the API request fails, after logging the error to the console.
+ */
 export const fetchUsers = async (url?: string): Promise<PaginatedUserResponse> => {
   try {
     const endpoint = url || '/users/';
@@ -46,6 +53,17 @@ export const fetchUsers = async (url?: string): Promise<PaginatedUserResponse> =
   }
 };
 
+/**
+ * Edits an existing user by their ID.
+ *
+ * Makes a PUT request to the `/users/{id}/` endpoint with the cleaned user data.
+ * It extracts relevant fields from the input `data` object before sending the request.
+ *
+ * @param id - The unique identifier of the user to edit. Can be a number or a string.
+ * @param data - An object containing the updated user information. It expects properties like username, email, first_name, last_name, phone, role, and either organization_id or an organization object with an id property.
+ * @returns A Promise that resolves to the updated user object (`User`) returned by the API.
+ * @throws Will re-throw any error encountered during the API request after logging it to the console.
+ */
 export const editUser = async (id: number | string, data: User): Promise<User> => {
   try {
     const cleanedData = {
