@@ -120,7 +120,7 @@ export default function CreateNoticeType() {
         />
         <DynamicFieldBuilder
           onSchemaChange={(schema) => setFormData((prev) => ({ ...prev, dynamic_schema: schema }))}
-          initialSchema={{}}
+          initialSchema={formData.dynamic_schema}
         />
         {errors.dynamic_schema && (
           <Typography color="error">{errors.dynamic_schema}</Typography>
