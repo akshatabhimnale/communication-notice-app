@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
-import { fetchNoticeTypes, deleteNoticeType, NoticeType, PaginatedResponse, DynamicSchema } from "@/services/noticeService";
+import { fetchNoticeTypes, deleteNoticeType} from "@/services/noticeService";
+import {NoticeType, PaginatedResponse, DynamicSchema} from "@/types/noticeTypesInterface";
 import {
   Box,
   Button,

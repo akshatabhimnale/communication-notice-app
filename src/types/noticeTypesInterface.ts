@@ -95,6 +95,7 @@ export interface Notice {
     org_id: string;
   }
   
+  
  export interface NoticeTypeFormProps {
     initialValues?: Partial<NoticeTypeFormValues>;
     onSubmit: (values: NoticeTypeFormValues) => Promise<void>;

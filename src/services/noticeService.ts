@@ -1,7 +1,7 @@
 import noticeApiClient from "./apiClients/noticeApiClient";
 import { AxiosError } from "axios";
 import { getTokenFromCookie, clearTokenCookie } from "@/services/userService";
-import {Notice, SchemaField, DynamicSchema, NoticeType, PaginatedResponse, ApiSchemaField, ApiNoticeType, ApiResponse ,UploadSchemaResponse} from "@/types/noticeTypesInterface";  
+import {Notice, SchemaField, DynamicSchema, NoticeType, PaginatedResponse, ApiSchemaField, ApiResponse ,UploadSchemaResponse} from "@/types/noticeTypesInterface";  
 
 
 

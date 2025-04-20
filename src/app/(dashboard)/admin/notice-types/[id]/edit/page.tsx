@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { NoticeTypeForm } from "@/components/NoticeTypeForm";
 import { fetchNoticeTypeById, updateNoticeType } from "@/services/noticeService";
 import { CircularProgress, Container } from "@mui/material";
+import { SchemaField } from "@/types/noticeTypesInterface";
 
 export default function EditNoticeType() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function EditNoticeType() {
   const [initialData, setInitialData] = useState<{
     name: string;
     description: string | null;
-    dynamic_schema: Record<string, any>;
+    dynamic_schema: Record<string, SchemaField>;
     org_id: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);

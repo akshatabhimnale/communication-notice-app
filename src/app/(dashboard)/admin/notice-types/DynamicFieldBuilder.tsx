@@ -236,7 +236,7 @@ export default function DynamicFieldBuilder({
         </Box>
       )}
 
-      <Box sx={{ mt: 2 }}>
+      <Box sx={{ mt: 0 }}>
         <Typography variant="subtitle1" gutterBottom>
           Schema Preview
         </Typography>

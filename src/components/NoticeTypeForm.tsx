@@ -61,12 +61,13 @@ export const NoticeTypeForm = ({
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
+  
     setIsSubmitting(true);
     try {
       await onSubmit({
         ...values,
-        org_id: orgId,
+        org_id: orgId, // Ensure org_id is included in submission
+        description: values.description || null,
       });
     } catch (err) {
       const errorMessage =
@@ -89,7 +90,7 @@ export const NoticeTypeForm = ({
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 0.5 }}>
       <Typography variant="h4" gutterBottom>
         {mode === "create" ? "Create" : "Edit"} Notice Type
       </Typography>
@@ -120,7 +121,7 @@ export const NoticeTypeForm = ({
           }
           fullWidth
           multiline
-          rows={3}
+          rows={2}
           helperText="Optional"
           variant="outlined"
           disabled={isSubmitting}
@@ -146,7 +147,7 @@ export const NoticeTypeForm = ({
           </Typography>
         )}
 
-        <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+        <Box sx={{ display: "flex", gap: 2, mt: 0 }}>
           <Button
             variant="contained"
             color="primary"
