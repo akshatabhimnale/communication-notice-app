@@ -85,3 +85,21 @@ export interface Notice {
     initialSchema?: Schema;
     disabled?: boolean;
   }
+
+
+
+  export interface NoticeTypeFormValues {
+    name: string;
+    description: string | null;
+    dynamic_schema: Record<string, SchemaField>;
+    org_id: string;
+  }
+  
+ export interface NoticeTypeFormProps {
+    initialValues?: Partial<NoticeTypeFormValues>;
+    onSubmit: (values: NoticeTypeFormValues) => Promise<void>;
+    onCancel: () => void;
+    mode: "create" | "edit";
+    orgId: string;
+    isLoading?: boolean;
+  }

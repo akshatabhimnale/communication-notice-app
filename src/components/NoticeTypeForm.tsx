@@ -11,23 +11,8 @@ import {
   CircularProgress,
 } from "@mui/material";
 import DynamicFieldBuilder from "@/app/(dashboard)/admin/notice-types/DynamicFieldBuilder";
-import { SchemaField } from "@/types/noticeTypesInterface";
+import {NoticeTypeFormProps,NoticeTypeFormValues } from "@/types/noticeTypesInterface";
 
-interface NoticeTypeFormValues {
-  name: string;
-  description: string | null;
-  dynamic_schema: Record<string, SchemaField>;
-  org_id: string;
-}
-
-interface NoticeTypeFormProps {
-  initialValues?: Partial<NoticeTypeFormValues>;
-  onSubmit: (values: NoticeTypeFormValues) => Promise<void>;
-  onCancel: () => void;
-  mode: "create" | "edit";
-  orgId: string;
-  isLoading?: boolean;
-}
 
 export const NoticeTypeForm = ({
   initialValues = {
