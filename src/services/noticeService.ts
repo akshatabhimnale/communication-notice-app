@@ -1,70 +1,9 @@
 import noticeApiClient from "./apiClients/noticeApiClient";
 import { AxiosError } from "axios";
 import { getTokenFromCookie, clearTokenCookie } from "@/services/userService";
+import {Notice, SchemaField, DynamicSchema, NoticeType, PaginatedResponse, ApiSchemaField, ApiNoticeType, ApiResponse ,UploadSchemaResponse} from "@/types/noticeTypesInterface";  
 
-export interface Notice {
-  id?: string;
-  title: string;
-  description: string;
-  createdAt?: string;
-}
 
-export interface SchemaField {
-  label: string;
-  type: "text" | "number" | "date" | "boolean";
-  required: boolean;
-}
-
-export interface DynamicSchema {
-  fields: Record<string, { type: string; label: string; required: boolean }>;
-}
-
-export interface NoticeType {
-  id: string;
-  org_id: string;
-  name: string;
-  description: string | null;
-  dynamic_schema: Record<string, SchemaField>;
-  created_at: string;
-}
-
-export interface PaginatedResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: NoticeType[];
-}
-
-interface ApiSchemaField {
-  type: string;
-  label: string;
-  required: boolean;
-}
-
-interface ApiNoticeType {
-  id: string;
-  org_id: string;
-  name: string;
-  description: string | null;
-  dynamic_schema: DynamicSchema;
-  created_at: string;
-}
-
-interface ApiResponse {
-  success: boolean;
-  data: ApiNoticeType;
-  errors: Record<string, unknown>;
-  meta: Record<string, unknown>;
-}
-
-interface UploadSchemaResponse {
-  success: boolean;
-  data: {
-    dynamic_schema: Record<string, { label: string; type: string }>;
-  };
-  errors: Record<string, unknown>;
-  meta: Record<string, unknown>;
-}
 
 // Transform component's dynamic_schema to API's expected format
 const transformDynamicSchemaForApi = (

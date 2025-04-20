@@ -24,28 +24,8 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { uploadSchemaFromCsv } from "@/services/noticeService";
+import { Field,Schema,DynamicFieldBuilderProps } from "@/types/noticeTypesInterface";
 
-interface Field {
-  field_name: string;
-  label: string;
-  type: "text" | "number" | "date" | "boolean";
-  required: boolean;
-}
-
-interface SchemaField {
-  label: string;
-  type: "text" | "number" | "date" | "boolean";
-  required: boolean;
-}
-
-interface Schema {
-  [key: string]: SchemaField;
-}
-
-interface DynamicFieldBuilderProps {
-  onSchemaChange: (schema: Schema) => void;
-  initialSchema?: Schema;
-}
 
 export default function DynamicFieldBuilder({
   onSchemaChange,
