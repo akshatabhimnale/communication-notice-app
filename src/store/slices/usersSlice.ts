@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { User, fetchUsers } from "@/services/usersService";
+import { User, fetchUsers,PaginatedUserResponse } from "@/services/userService";
 import { AxiosError } from "axios";
 
 // Update User interface to include optional deleted flag
@@ -15,14 +15,6 @@ interface UserState {
   nextPageUrl: string | null;
   prevPageUrl: string | null;
 }
-
-interface PaginatedUserResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: User[];
-}
-
 const initialState: UserState = {
   users: [],
   loading: false,

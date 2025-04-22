@@ -1,11 +1,11 @@
 "use client";
 import { useState } from "react";
-import { 
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-  Paper, Button, Box, CircularProgress, Typography, Popover, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions
+import {
+  Table,TableBody,TableCell,TableContainer,TableHead,TableRow,Paper,Button,Box,CircularProgress,Typography,Popover,MenuItem,Dialog,DialogTitle,DialogContent,DialogActions,IconButton,
 } from "@mui/material";
 import EditUserModal from "./EditUserModal";
-import { User, deleteUser } from "@/services/usersService";
+import { User, deleteUser } from "@/services/userService";
+import { EllipsisVertical } from "lucide-react";
 
 export interface UserWithDelete extends User {
   deleted?: boolean;
@@ -48,25 +48,23 @@ export default function UsersTable({
   const handleClose = () => setAnchorEl(null);
 
   const handleEditClick = () => {
+    if (!selectedUser) return; 
     setEditModalOpen(true);
     handleClose();
   };
 
   const handleDeletePrompt = () => {
+    if (!selectedUser) return;
     setConfirmDeleteOpen(true);
     handleClose();
   };
 
   const handleDeleteCancel = () => {
     setConfirmDeleteOpen(false);
+    setSelectedUser(null); // Clear selected user on cancel
+    setDeleteError(null); // Clear delete error on cancel
   };
 
-  /**
-
-   * Handles user deletion confirmation. Calls the usersService to delete the selected user,
-   * updates the parent component via onUserUpdated with a deleted flag, manages loading state,
-   * and handles errors. Closes the confirmation dialog on successful deletion.
-   **/
   const handleDeleteConfirm = async () => {
     if (!selectedUser) return;
 
@@ -80,63 +78,91 @@ export default function UsersTable({
         deleted: true,
       };
       onUserUpdated(userWithDelete);
-      setConfirmDeleteOpen(false);
+      setConfirmDeleteOpen(false); // Close dialog on success
+      setSelectedUser(null); // Clear selected user
     } catch (error) {
+      console.error("Delete user error:", error); // Log the error
       setDeleteError(
         error instanceof Error ? error.message : "Failed to delete user"
       );
+      // Keep the dialog open on error to show the message
     } finally {
       setDeleteLoading(false);
     }
   };
 
+  // Function to render table content
+  const renderTableContent = () => {
+    if (loading) {
+      return (
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (error) {
+      return (
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+          <Typography color="error">{error}</Typography>
+        </Box>
+      );
+    }
+
+    if (users.length === 0) {
+      return (
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+          <Typography>No users found.</Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Table sx={{ minWidth: 650 }} aria-label="users table">
+        <TableHead>
+          <TableRow>
+            <TableCell>Username</TableCell>
+            <TableCell>Email</TableCell>
+            <TableCell>Phone</TableCell>
+            <TableCell>Role</TableCell>
+            <TableCell>Organization</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {users.map((user) => (
+            <TableRow key={user.id} hover>
+              <TableCell component="th" scope="row">
+                {user.username}
+              </TableCell>
+              <TableCell>{user.email || "-"}</TableCell>
+              <TableCell>{user.phone || "-"}</TableCell>
+              <TableCell>{user.role}</TableCell>
+              <TableCell>{user.organization?.name || "-"}</TableCell>
+              <TableCell align="right">
+                <IconButton
+                  aria-label={`Actions for ${user.username}`}
+                  onClick={(e) => handleActionsClick(e, user)}
+                >
+                  <EllipsisVertical size={20} />
+                </IconButton>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
   return (
     <Box sx={{ width: "100%" }}>
-      <TableContainer component={Paper}>
-        {loading && (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {error && (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-            <Typography color="error">{error}</Typography>
-          </Box>
-        )}
-
-        {!loading && !error && (
-          <Table sx={{ minWidth: 650 }} aria-label="users table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Username</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Phone</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Organization</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.phone}</TableCell>
-                  <TableCell>{user.role}</TableCell>
-                  <TableCell>{user.organization?.name}</TableCell>
-                  <TableCell>
-                    <Button onClick={(e) => handleActionsClick(e, user)}>
-                      ⋮
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+      <TableContainer component={Paper} sx={{ mt: 2 }}>
+        {" "}
+        {/* Add margin top */}
+        {renderTableContent()}
       </TableContainer>
 
+      {/* Keep Popover outside TableContainer */}
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
@@ -144,8 +170,18 @@ export default function UsersTable({
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <MenuItem onClick={handleEditClick}>Edit</MenuItem>
-        <MenuItem onClick={handleDeletePrompt} sx={{ color: "error.main" }}>
+        <MenuItem onClick={handleEditClick} disabled={!selectedUser}>
+          {" "}
+          {/* Disable if no user */}
+          Edit
+        </MenuItem>
+        <MenuItem
+          onClick={handleDeletePrompt}
+          sx={{ color: "error.main" }}
+          disabled={!selectedUser}
+        >
+          {" "}
+          {/* Disable if no user */}
           Delete
         </MenuItem>
       </Popover>
@@ -154,10 +190,20 @@ export default function UsersTable({
       <Dialog open={confirmDeleteOpen} onClose={handleDeleteCancel}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete {selectedUser?.username}?
+          <Typography>
+            {`Are you sure you want to delete user "${selectedUser?.username || ""}"?`}
+          </Typography>
+          {/* Display delete error within the dialog */}
+          {deleteError && (
+            <Typography color="error" sx={{ mt: 2 }}>
+              {deleteError}
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteCancel} disabled={deleteLoading}>
+            Cancel
+          </Button>
           <Button
             onClick={handleDeleteConfirm}
             color="error"
@@ -169,37 +215,38 @@ export default function UsersTable({
         </DialogActions>
       </Dialog>
 
-      {deleteError && (
-        <Typography color="error" sx={{ mt: 2 }}>
-          {deleteError}
-        </Typography>
-      )}
-
+      {/* Edit Modal - Render conditionally but keep it structured */}
       {selectedUser && (
         <EditUserModal
           user={selectedUser}
           open={editModalOpen}
           setOpen={setEditModalOpen}
-          onUserUpdated={onUserUpdated}
+          onUserUpdated={(updatedUser) => {
+            onUserUpdated(updatedUser);
+            setSelectedUser(null); // Clear selected user after update
+          }}
         />
       )}
 
-      <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-        <Button
-          variant="contained"
-          onClick={() => onPageChange(prevPageUrl)}
-          disabled={!prevPageUrl || loading}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => onPageChange(nextPageUrl)}
-          disabled={!nextPageUrl || loading}
-        >
-          Next
-        </Button>
-      </Box>
+      {/* Pagination - Only show if there are users and not loading/error */}
+      {!loading && !error && users.length > 0 && (
+        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
+          <Button
+            variant="contained"
+            onClick={() => onPageChange(prevPageUrl)}
+            disabled={!prevPageUrl} // Loading state is handled by the parent now
+          >
+            Previous
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => onPageChange(nextPageUrl)}
+            disabled={!nextPageUrl} // Loading state is handled by the parent now
+          >
+            Next
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 }
