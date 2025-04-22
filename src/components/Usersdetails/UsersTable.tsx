@@ -37,7 +37,10 @@ export default function UsersTable({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
-  const handleActionsClick = (event: React.MouseEvent<HTMLButtonElement>, user: User) => {
+  const handleActionsClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    user: User
+  ) => {
     setAnchorEl(event.currentTarget);
     setSelectedUser(user);
   };
@@ -58,22 +61,30 @@ export default function UsersTable({
     setConfirmDeleteOpen(false);
   };
 
+  /**
+
+   * Handles user deletion confirmation. Calls the usersService to delete the selected user,
+   * updates the parent component via onUserUpdated with a deleted flag, manages loading state,
+   * and handles errors. Closes the confirmation dialog on successful deletion.
+   **/
   const handleDeleteConfirm = async () => {
     if (!selectedUser) return;
-    
+
     setDeleteLoading(true);
     setDeleteError(null);
-    
+
     try {
       await deleteUser(selectedUser.id);
-      const userWithDelete: UserWithDelete = { 
-        ...selectedUser, 
-        deleted: true 
+      const userWithDelete: UserWithDelete = {
+        ...selectedUser,
+        deleted: true,
       };
       onUserUpdated(userWithDelete);
       setConfirmDeleteOpen(false);
     } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : "Failed to delete user");
+      setDeleteError(
+        error instanceof Error ? error.message : "Failed to delete user"
+      );
     } finally {
       setDeleteLoading(false);
     }
@@ -115,7 +126,9 @@ export default function UsersTable({
                   <TableCell>{user.role}</TableCell>
                   <TableCell>{user.organization?.name}</TableCell>
                   <TableCell>
-                    <Button onClick={(e) => handleActionsClick(e, user)}>⋮</Button>
+                    <Button onClick={(e) => handleActionsClick(e, user)}>
+                      ⋮
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -132,28 +145,22 @@ export default function UsersTable({
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
         <MenuItem onClick={handleEditClick}>Edit</MenuItem>
-        <MenuItem 
-          onClick={handleDeletePrompt} 
-          sx={{ color: 'error.main' }}
-        >
+        <MenuItem onClick={handleDeletePrompt} sx={{ color: "error.main" }}>
           Delete
         </MenuItem>
       </Popover>
 
       {/* Confirmation Dialog */}
-      <Dialog
-        open={confirmDeleteOpen}
-        onClose={handleDeleteCancel}
-      >
+      <Dialog open={confirmDeleteOpen} onClose={handleDeleteCancel}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           Are you sure you want to delete {selectedUser?.username}?
         </DialogContent>
         <DialogActions>
           <Button onClick={handleDeleteCancel}>Cancel</Button>
-          <Button 
-            onClick={handleDeleteConfirm} 
-            color="error" 
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
             variant="contained"
             disabled={deleteLoading}
           >

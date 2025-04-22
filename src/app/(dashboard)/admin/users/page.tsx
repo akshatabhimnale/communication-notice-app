@@ -6,6 +6,7 @@ import * as userSlice from "@/store/slices/usersSlice";
 import * as authSlice from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
 import UsersTable from '@/components/Usersdetails/UsersTable';
+import UsersTableSkeleton from '@/components/Usersdetails/UsersTableSkeleton';
 import { setAuthorizationHeader } from "@/services/apiClients/usersApiClient";
 import { UserWithDelete } from "@/components/Usersdetails/UsersTable"; // Import the interface
 // or define it locally if you prefer
@@ -191,16 +192,18 @@ export default function UsersList() {
       {authLoading && <p>Authenticating...</p>}
       {authError && <p>Auth Error: {authError}</p>}
       {error && <p>Error: {error}</p>}
-      
-      <UsersTable
-        users={users}
-        loading={usersLoading || isRefreshing}
-        error={error}
-        nextPageUrl={nextPageUrl}
-        prevPageUrl={prevPageUrl}
-        onPageChange={handlePageChange}
-        onUserUpdated={handleUserUpdate}
-      />
+      {(usersLoading || isRefreshing)
+        ? <UsersTableSkeleton />
+        : <UsersTable
+            users={users}
+            loading={false}
+            error={error}
+            nextPageUrl={nextPageUrl}
+            prevPageUrl={prevPageUrl}
+            onPageChange={handlePageChange}
+            onUserUpdated={handleUserUpdate}
+          />
+      }
     </div>
   );
 }
