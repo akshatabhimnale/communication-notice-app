@@ -16,6 +16,7 @@ import {
 import { fetchUserProfile, updateCurrentUserProfile } from "@/services/userService";
 import { styles } from "./profileStyles"; 
 import { ProfileSkeleton } from "./ProfileSkeleton"; 
+
 interface UserProfile {
   id: string;
   username: string;
@@ -42,6 +43,8 @@ export default function ProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({ username: "", email: "", phone: "" });
   const [updateError, setUpdateError] = useState<string | null>(null);
+  // New state for save operation
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -65,8 +68,10 @@ export default function ProfilePage() {
       }
     };
 
+    // Removed router from dependencies as it doesn't change
     loadProfile();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]); // Empty dependency array
 
   const handleEditToggle = () => {
     setEditMode(!editMode);
@@ -76,10 +81,33 @@ export default function ProfilePage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear update error when user starts typing
+    setUpdateError(null);
+  };
+
+  // Basic email validation regex
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
   const handleUpdate = async () => {
     if (!profile) return;
+
+    // Validate inputs
+    if (!formData.username.trim()) {
+      setUpdateError("Username is required");
+      return;
+    }
+    if (!formData.email.trim()) {
+      setUpdateError("Email is required");
+      return;
+    }
+    if (!isValidEmail(formData.email)) {
+      setUpdateError("Please enter a valid email address");
+      return;
+    }
+
+    setIsSaving(true);
     try {
       const updates = {
         username: formData.username,
@@ -93,18 +121,13 @@ export default function ProfilePage() {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update profile";
       setUpdateError(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (loading) {
-    return (
-      // <Container maxWidth="sm">
-      //   <Typography>Loading...</Typography>
-      // </Container>
-      <>
-      <ProfileSkeleton />
-      </>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (error || !profile) {
@@ -161,6 +184,7 @@ export default function ProfilePage() {
                     onChange={handleInputChange}
                     fullWidth
                     variant="outlined"
+                    error={!!updateError && updateError.includes("Username")}
                   />
                   <TextField
                     label="Email"
@@ -170,6 +194,7 @@ export default function ProfilePage() {
                     fullWidth
                     variant="outlined"
                     type="email"
+                    error={!!updateError && updateError.includes("Email")}
                   />
                   <TextField
                     label="Phone"
@@ -185,8 +210,13 @@ export default function ProfilePage() {
                     </Typography>
                   )}
                   <Box sx={styles.buttonGroup}>
-                    <Button variant="contained" color="primary" onClick={handleUpdate}>
-                      Save
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleUpdate}
+                      disabled={isSaving} // Disable button while saving
+                    >
+                      {isSaving ? "Saving..." : "Save"}
                     </Button>
                     <Button variant="outlined" color="secondary" onClick={handleEditToggle}>
                       Cancel
