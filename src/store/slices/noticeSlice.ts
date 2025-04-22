@@ -2,9 +2,9 @@ import {
   createNotice,
   deleteNotice,
   fetchNotices,
-  Notice,
   updateNotice,
 } from "@/services/noticeService";
+import {Notice} from "@/types/noticeTypesInterface";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface NoticeState {
