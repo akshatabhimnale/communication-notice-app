@@ -8,10 +8,11 @@ import UsersTable from '@/components/Usersdetails/UsersTable';
 import UsersTableSkeleton from '@/components/Usersdetails/UsersTableSkeleton';
 import { UserWithDelete } from "@/components/Usersdetails/UsersTable"; // Import the interface
 import { updateUser, removeUser } from "@/store/slices/usersSlice";
-
+import {useSnackbar} from 'notistack';
 export default function UsersList() {
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const { enqueueSnackbar } = useSnackbar();
 
   const {
     users,
@@ -52,11 +53,14 @@ export default function UsersList() {
     if (updatedUser.deleted) {
       // Optimistically remove the user from the store
       dispatch(removeUser(updatedUser.id));
+      dispatch(userSlice.fetchUsersThunk(undefined));
+      enqueueSnackbar("User deleted successfully", { variant: "success" });
     } else {
       // Optimistically update the user in the store
       dispatch(updateUser(updatedUser));
       // setTimeout(() => {
       dispatch(userSlice.fetchUsersThunk(undefined));
+      enqueueSnackbar("User updated successfully", { variant: "success" });
       // }, 200);
     }
   };

@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { fetchUserProfile, updateCurrentUserProfile } from "@/services/userService";
 import { styles } from "./profileStyles"; 
+import { useSnackbar } from "notistack"; 
 interface UserProfile {
   id: string;
   username: string;
@@ -41,7 +42,7 @@ export default function ProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({ username: "", email: "", phone: "" });
   const [updateError, setUpdateError] = useState<string | null>(null);
-
+  const { enqueueSnackbar } = useSnackbar();
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -89,9 +90,11 @@ export default function ProfilePage() {
       setProfile(updatedProfile);
       setEditMode(false);
       setUpdateError(null);
+      enqueueSnackbar("Profile updated successfully", { variant: "success" });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update profile";
       setUpdateError(errorMessage);
+      enqueueSnackbar(errorMessage, { variant: "error" });
     }
   };
 
