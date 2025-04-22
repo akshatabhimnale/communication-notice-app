@@ -3,11 +3,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { NoticeTypeForm } from "@/components/NoticeTypeForm";
+import { NoticeTypeForm } from "@/components/NoticeType/NoticeTypeForm";
 import { createNoticeType } from "@/services/noticeService";
 import { fetchUserProfile } from "@/services/userService";
 import { Container, CircularProgress, Typography, Button } from "@mui/material";
 import { NoticeTypeFormValues } from "@/types/noticeTypesInterface";
+import { NoticeTypeFormSkeleton } from "@/components/NoticeType/NoticeTypeFormSkeleton";
 
 export default function CreateNoticeType() {
   const router = useRouter();
@@ -79,9 +80,9 @@ export default function CreateNoticeType() {
 
   if (isLoading) {
     return (
-      <Container maxWidth="lg" sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-        <CircularProgress />
-      </Container>
+      <>
+      <NoticeTypeFormSkeleton />
+      </>
     );
   }
 

@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { fetchUserProfile, updateCurrentUserProfile } from "@/services/userService";
 import { styles } from "./profileStyles"; 
+import { ProfileSkeleton } from "./ProfileSkeleton"; 
 interface UserProfile {
   id: string;
   username: string;
@@ -97,9 +98,12 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <Container maxWidth="sm">
-        <Typography>Loading...</Typography>
-      </Container>
+      // <Container maxWidth="sm">
+      //   <Typography>Loading...</Typography>
+      // </Container>
+      <>
+      <ProfileSkeleton />
+      </>
     );
   }
 

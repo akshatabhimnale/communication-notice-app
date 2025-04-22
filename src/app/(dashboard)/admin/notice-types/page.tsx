@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import { fetchNoticeTypes, deleteNoticeType} from "@/services/noticeService";
 import {NoticeType, PaginatedResponse, DynamicSchema} from "@/types/noticeTypesInterface";
+import {NoticeTypeSkeleton} from "@/components/NoticeType/NoticeTypeSkeleton";
 import {
   Box,
   Button,
@@ -149,9 +150,9 @@ export default function NoticeTypesList() {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-        <CircularProgress />
-      </Box>
+      <>
+      <NoticeTypeSkeleton/>
+      </>
     );
   }
 
