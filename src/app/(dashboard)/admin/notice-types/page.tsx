@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
-import { fetchNoticeTypes, deleteNoticeType} from "@/services/noticeService";
-import {NoticeType, PaginatedResponse, DynamicSchema} from "@/types/noticeTypesInterface";
-import {NoticeTypeSkeleton} from "@/components/NoticeType/NoticeTypeSkeleton";
+import { fetchNoticeTypes, deleteNoticeType } from "@/services/noticeService";
+import { NoticeType, PaginatedResponse, DynamicSchema } from "@/types/noticeTypesInterface";
+import { NoticeTypeSkeleton } from "@/components/NoticeType/NoticeTypeSkeleton";
 import {
   Box,
   Button,
@@ -17,7 +17,11 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  IconButton,
+  Menu,
+  MenuItem,
 } from "@mui/material";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 export default function NoticeTypesList() {
   const router = useRouter();
@@ -36,6 +40,8 @@ export default function NoticeTypesList() {
   const [noticeToDelete, setNoticeToDelete] = useState<NoticeType | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedNotice, setSelectedNotice] = useState<NoticeType | null>(null);
 
   const loadNotices = useCallback(async () => {
     setLoading(true);
@@ -106,7 +112,6 @@ export default function NoticeTypesList() {
   const filteredNoticeTypes = (search ? allNoticeTypes : noticeTypes).filter((notice) => {
     const name = (notice.name || "").trim().toLowerCase();
     const searchTerm = search.trim().toLowerCase();
-    // console.log(`Filtering: name="${name}", search="${searchTerm}", match=${name.includes(searchTerm)}`);
     return name.includes(searchTerm);
   });
 
@@ -119,10 +124,21 @@ export default function NoticeTypesList() {
     setPaginationModel((prev) => ({ ...prev, page: 0 })); // Reset to first page for search results
   };
 
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, notice: NoticeType) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedNotice(notice);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedNotice(null);
+  };
+
   const handleDeleteClick = (notice: NoticeType) => {
     setNoticeToDelete(notice);
     setDeleteDialogOpen(true);
     setDeleteError(null);
+    handleMenuClose();
   };
 
   const handleDeleteClose = () => {
@@ -149,11 +165,7 @@ export default function NoticeTypesList() {
   };
 
   if (loading) {
-    return (
-      <>
-      <NoticeTypeSkeleton/>
-      </>
-    );
+    return <NoticeTypeSkeleton />;
   }
 
   if (error) {
@@ -214,7 +226,6 @@ export default function NoticeTypesList() {
                 width: 150,
                 valueGetter: (params: DynamicSchema) => {
                   const fieldKeys = Object.keys(params.fields || {});
-                  // console.log(`Fields Count for dynamic_schema: keys=${JSON.stringify(fieldKeys)}`);
                   return fieldKeys.length;
                 },
               },
@@ -228,23 +239,47 @@ export default function NoticeTypesList() {
                     return <Box>Invalid Row</Box>;
                   }
                   return (
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="primary"
-                        onClick={() => router.push(`/admin/notice-types/${params.row.id}/edit`)}
+                    <Box>
+                      <IconButton
+                        onClick={(event) => handleMenuOpen(event, params.row)}
+                        aria-label="more"
+                        aria-controls={anchorEl ? "actions-menu" : undefined}
+                        aria-haspopup="true"
                       >
-                        Edit
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        onClick={() => handleDeleteClick(params.row)}
+                        <MoreVertIcon />
+                      </IconButton>
+                      <Menu
+                        id="actions-menu"
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl) && selectedNotice?.id === params.row.id}
+                        onClose={handleMenuClose}
+                        MenuListProps={{
+                          "aria-labelledby": "actions-button",
+                        }}
                       >
-                        Delete
-                      </Button>
+                        <MenuItem
+                          onClick={() => {
+                            router.push(`/admin/notice-types/${params.row.id}/view`);
+                            handleMenuClose();
+                          }}
+                        >
+                          View
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            router.push(`/admin/notice-types/${params.row.id}/edit`);
+                            handleMenuClose();
+                          }}
+                        >
+                          Edit
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => handleDeleteClick(params.row)}
+                          sx={{ color: "error.main" }}
+                        >
+                          Delete
+                        </MenuItem>
+                      </Menu>
                     </Box>
                   );
                 },
@@ -272,8 +307,8 @@ export default function NoticeTypesList() {
             <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
             <DialogContent>
               <DialogContentText>
-              Are you sure you want to delete the notice type &quot;{noticeToDelete?.name}&quot;?
-              This action cannot be undone.
+                Are you sure you want to delete the notice type &quot;{noticeToDelete?.name}&quot;?
+                This action cannot be undone.
               </DialogContentText>
               {deleteError && (
                 <Typography color="error" sx={{ mt: 2 }}>
