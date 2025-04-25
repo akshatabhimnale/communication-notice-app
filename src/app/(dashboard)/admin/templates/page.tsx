@@ -1,5 +1,5 @@
 import React from 'react'
-import Template_table from '@/components/templates/Template_table'
+import Template_table from '@/components/templates/TemplateTable'
 export default function page() {
   return (
     <div>

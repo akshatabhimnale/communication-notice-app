@@ -1,14 +1,12 @@
-"use client"
+"use client" 
 import React, { useEffect } from "react";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
-// import { GridRenderCellParams } from "@mui/x-data-grid";
-import Button from "@mui/material/Button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
 import {  fetchTemplatesThunk } from "@/store/slices/templatesSlice";
 
 
-export default function Template_table() {
+export default function TemplateTable() {
   const dispatch = useAppDispatch();
 
   const {
@@ -17,6 +15,7 @@ export default function Template_table() {
     nextPageUrl,
     prevPageUrl,
     error,
+    count
   } = useAppSelector((state: RootState) => state.templates);
 
   useEffect(() => {
@@ -77,6 +76,11 @@ export default function Template_table() {
     // },
   ];
 
+  const [paginationModel, setPaginationModel] = React.useState({
+    pageSize: 10,
+    page: 0,
+  });
+
   return (
     <div style={{ width: "100%" }}>
       {error && <p style={{ color: "red" }}>Error: {error}</p>}
@@ -86,23 +90,22 @@ export default function Template_table() {
         getRowId={(row) => row.id}
         loading={loading}
         pagination={true}
+        paginationMode="server"
         disableRowSelectionOnClick
         autoHeight
+        hideFooterSelectedRowCount
+        rowCount={count || 0} //total count from your API response
+        pageSizeOptions={[10]}
+        paginationModel={paginationModel}
+        onPaginationModelChange={(newModel) => {
+          setPaginationModel(newModel);
+          if (newModel.page > paginationModel.page && nextPageUrl) {
+            handlePageChange(nextPageUrl);
+          } else if (newModel.page < paginationModel.page && prevPageUrl) {
+            handlePageChange(prevPageUrl);
+          }
+        }}
       />
-      <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-        <Button
-          disabled={!prevPageUrl || loading}
-          onClick={() => handlePageChange(prevPageUrl)}
-        >
-          Previous
-        </Button>
-        <Button
-          disabled={!nextPageUrl || loading}
-          onClick={() => handlePageChange(nextPageUrl)}
-        >
-          Next
-        </Button>
-      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import templateApiClient from '@/services/apiClients/templateApiClient'
+import noticeApiClient from '@/services/apiClients/noticeApiClient'
 
 export interface PaginatedTemplateResponse {
     // count,previous,next,results
@@ -22,7 +22,7 @@ export interface PaginatedTemplateResponse {
 export const fetchTemplates = async (url?: string): Promise<PaginatedTemplateResponse> => {
     try {
       const endpoint = url || '/templates/';
-      const response = await templateApiClient.get<PaginatedTemplateResponse>(endpoint);
+      const response = await noticeApiClient.get<PaginatedTemplateResponse>(endpoint);
       return response.data;
     } catch (error) {
       console.error("Error fetching templates:", error);
