@@ -83,9 +83,7 @@ export const NoticeTypeForm = ({
 
   if (isLoading) {
     return (
-      <Container maxWidth="lg" sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-        <CircularProgress />
-      </Container>
+      <></>
     );
   }
 

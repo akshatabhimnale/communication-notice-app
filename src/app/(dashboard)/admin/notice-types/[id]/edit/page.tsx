@@ -3,10 +3,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { NoticeTypeForm } from "@/components/NoticeTypeForm";
+import { NoticeTypeForm } from "@/components/NoticeType/NoticeTypeForm";
 import { fetchNoticeTypeById, updateNoticeType } from "@/services/noticeService";
-import { CircularProgress, Container } from "@mui/material";
 import { SchemaField } from "@/types/noticeTypesInterface";
+import { NoticeTypeFormSkeleton } from "@/components/NoticeType/NoticeTypeFormSkeleton";
 
 export default function EditNoticeType() {
   const router = useRouter();
@@ -53,9 +53,9 @@ export default function EditNoticeType() {
 
   if (isLoading || !initialData) {
     return (
-      <Container maxWidth="lg" sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-        <CircularProgress />
-      </Container>
+      <>
+      <NoticeTypeFormSkeleton />
+      </>
     );
   }
 
