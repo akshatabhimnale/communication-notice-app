@@ -1,15 +1,15 @@
 "use client"
 import React, { useEffect } from "react";
-import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { DataGrid, GridColDef } from "@mui/x-data-grid";
+// import { GridRenderCellParams } from "@mui/x-data-grid";
 import Button from "@mui/material/Button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
-import { removeTemplate, fetchTemplatesThunk } from "@/store/slices/templatesSlice";
-import { useSnackbar } from "notistack";
+import {  fetchTemplatesThunk } from "@/store/slices/templatesSlice";
+
 
 export default function Template_table() {
   const dispatch = useAppDispatch();
-  const { enqueueSnackbar } = useSnackbar();
 
   const {
     templates,
@@ -25,11 +25,10 @@ export default function Template_table() {
     }
   }, [dispatch, templates.length]);
 
-  const handleDelete = (id: string) => {
-    dispatch(removeTemplate(id));
-    enqueueSnackbar("Template deleted", { variant: "success" });
-    dispatch(fetchTemplatesThunk(undefined));
-  };
+  // const handleDelete = (id: string) => {
+  //   dispatch(removeTemplate(id));
+  //   dispatch(fetchTemplatesThunk(undefined));
+  // };
 
   const handlePageChange = (url: string | null) => {
     if (url && !loading) {

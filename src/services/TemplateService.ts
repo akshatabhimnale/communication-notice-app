@@ -1,4 +1,3 @@
-import axios from "axios";
 import templateApiClient from '@/services/apiClients/templateApiClient'
 
 export interface PaginatedTemplateResponse {
@@ -8,8 +7,16 @@ export interface PaginatedTemplateResponse {
     previous: string | null;
     results: template[];
   }
-export interface template {
-}
+  
+  export interface template {
+    id: string;
+    channel: string;
+    template_content: string;
+    created_at: string;
+    updated_at: string;
+    notice_type: string;
+  }
+    
   
 // fetch paginated templates from api
 export const fetchTemplates = async (url?: string): Promise<PaginatedTemplateResponse> => {

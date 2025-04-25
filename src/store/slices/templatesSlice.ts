@@ -44,12 +44,12 @@ const templatesSlice = createSlice({
   reducers: {
     updateTemplate: (state, action: PayloadAction<template>) => {
       state.templates = state.templates.map((tpl) =>
-        // @ts-ignore: Assume template has id
+        
         tpl.id === action.payload.id ? { ...action.payload } : tpl
       );
     },
     removeTemplate: (state, action: PayloadAction<string>) => {
-      // @ts-ignore: Assume template has id
+      
       state.templates = state.templates.filter((tpl) => tpl.id !== action.payload);
     },
   },
