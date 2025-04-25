@@ -1,139 +1,97 @@
+// app/admin/notice-types/create/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Container,
-  Typography,
-  TextField,
-  Button,
-  Box,
-} from "@mui/material";
-import { fetchUserProfile } from "@/services/userService";
+import { NoticeTypeForm } from "@/components/NoticeType/NoticeTypeForm";
 import { createNoticeType } from "@/services/noticeService";
-import DynamicFieldBuilder from "@/app/(dashboard)/admin/notice-types/DynamicFieldBuilder";
+import { fetchUserProfile } from "@/services/userService";
+import { Container, CircularProgress, Typography, Button } from "@mui/material";
+import { NoticeTypeFormValues } from "@/types/noticeTypesInterface";
+import { NoticeTypeFormSkeleton } from "@/components/NoticeType/NoticeTypeFormSkeleton";
 
 export default function CreateNoticeType() {
   const router = useRouter();
+  const [orgId, setOrgId] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [formData, setFormData] = useState<{
-    name: string;
-    description: string | null;
-    dynamic_schema: Record<string, { label: string; type: "text" | "number" | "date" | "boolean"; required: boolean }>;
-    org_id: string;
-  }>({
-    name: "",
-    description: "",
-    dynamic_schema: {},
-    org_id: "",
-  });
-
-  const [errors, setErrors] = useState({ name: "", dynamic_schema: "" });
-
-  useEffect(() => {
-    const getOrgId = async () => {
-      try {
-        const userProfile = await fetchUserProfile();
-        const orgId = userProfile.organization_id || userProfile.organization?.id;
-        if (orgId) {
-          setFormData((prev) => ({ ...prev, org_id: orgId }));
-        } else {
-          setErrors((prev) => ({ ...prev, dynamic_schema: "Couldn’t find your club number" }));
-        }
-      } catch (error) {
-        console.error("Error fetching user profile:", error);
-        setErrors((prev) => ({ ...prev, dynamic_schema: "Failed to fetch organization ID" }));
+  // Wrap the orgId fetching in useCallback to maintain reference
+  const fetchOrganizationId = useCallback(async () => {
+    try {
+      const userProfile = await fetchUserProfile();
+      const organizationId = userProfile.organization_id || userProfile.organization?.id;
+      if (!organizationId) {
+        throw new Error("Organization ID not found");
       }
-    };
-    getOrgId();
+      setOrgId(organizationId);
+      setError("");
+    } catch (err) {
+      console.error("Error fetching organization ID:", err);
+      setError(err instanceof Error ? err.message : "Failed to load organization information");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const validateForm = () => {
-    let valid = true;
-    const newErrors = { name: "", dynamic_schema: "" };
+  useEffect(() => {
+    fetchOrganizationId();
+  }, [fetchOrganizationId]);
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-      valid = false;
-    } else if (formData.name.length > 100) {
-      newErrors.name = "Name must be 100 characters or less";
-      valid = false;
-    }
-
-    if (Object.keys(formData.dynamic_schema).length === 0) {
-      newErrors.dynamic_schema = "At least one field is required in the schema";
-      valid = false;
-    }
-
-    if (!formData.org_id) {
-      newErrors.dynamic_schema = "Organization ID is missing";
-      valid = false;
-    }
-
-    setErrors(newErrors);
-    return valid;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
+  const handleSubmit = async (formValues: Omit<NoticeTypeFormValues, 'org_id'>) => {
     try {
-      const noticeData = {
-        org_id: formData.org_id,
-        name: formData.name,
-        description: formData.description || null,
-        dynamic_schema: formData.dynamic_schema,
-      };
-      await createNoticeType(noticeData);
+      if (!orgId) {
+        throw new Error("Organization ID is missing");
+      }
+      
+      await createNoticeType({
+        ...formValues,
+        org_id: orgId
+      });
       router.push("/admin/notice-types");
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to save the notice type";
-      setErrors((prev) => ({
-        ...prev,
-        dynamic_schema: errorMessage,
-      }));
+      console.error("Error creating notice type:", err);
+      throw err;
     }
   };
 
+  const handleRetry = () => {
+    setIsLoading(true);
+    fetchOrganizationId(); // Use the memoized function
+  };
+
+  if (error) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography color="error" gutterBottom>
+          {error}
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={handleRetry}
+          startIcon={isLoading ? <CircularProgress size={20} /> : null}
+          disabled={isLoading}
+        >
+          {isLoading ? "Retrying..." : "Retry Loading"}
+        </Button>
+      </Container>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <>
+      <NoticeTypeFormSkeleton />
+      </>
+    );
+  }
+
   return (
-    <Container maxWidth="lg">
-      <Typography variant="h4" gutterBottom>
-        Create Notice Type
-      </Typography>
-      <Box component="form" noValidate sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-        <TextField
-          label="Name"
-          value={formData.name}
-          onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-          fullWidth
-          error={!!errors.name}
-          helperText={errors.name || "Required, max 100 characters"}
-          inputProps={{ maxLength: 100 }}
-        />
-        <TextField
-          label="Description"
-          value={formData.description ?? ""}
-          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value || null }))}
-          fullWidth
-          multiline
-          rows={2}
-          helperText="Optional"
-        />
-        <DynamicFieldBuilder
-          onSchemaChange={(schema) => setFormData((prev) => ({ ...prev, dynamic_schema: schema }))}
-          initialSchema={{}}
-        />
-        {errors.dynamic_schema && (
-          <Typography color="error">{errors.dynamic_schema}</Typography>
-        )}
-        <Box sx={{ display: "flex", gap: 2 }}>
-          <Button variant="contained" color="primary" onClick={handleSubmit}>
-            Save
-          </Button>
-          <Button variant="outlined" color="secondary" onClick={() => router.push("/admin/notice-types")}>
-            Cancel
-          </Button>
-        </Box>
-      </Box>
-    </Container>
+    <NoticeTypeForm
+      onSubmit={handleSubmit}
+      onCancel={() => router.push("/admin/notice-types")}
+      mode="create"
+      orgId={orgId}
+    />
   );
 }
