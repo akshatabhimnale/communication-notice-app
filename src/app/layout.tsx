@@ -13,7 +13,7 @@ import LayersIcon from "@mui/icons-material/Layers";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import GroupIcon from "@mui/icons-material/Group";
 import SettingsIcon from "@mui/icons-material/Settings";
-
+import NotistackProvider from "@/components/notistack/NotistackProvider";
 import type { Navigation } from "@toolpad/core/AppProvider";
 
 const NAVIGATION: Navigation = [
@@ -97,11 +97,13 @@ export default function RootLayout(props: { children: React.ReactNode }) {
       <body>
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <ReduxProvider>
+           <NotistackProvider>
             <Suspense fallback={<div>Loading layout...</div>}>
               <NextAppProvider navigation={NAVIGATION} branding={BRANDING}>
                 {props.children}
               </NextAppProvider>
             </Suspense>
+          </NotistackProvider>
           </ReduxProvider>
         </AppRouterCacheProvider>
       </body>

@@ -19,7 +19,6 @@ export const setAuthorizationHeader = (token: string) => {
   userApiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 };
 
-
 let getState: () => StoreState = () => ({ auth: { accessToken: null } });
 
 export const setStoreAccessor = (storeGetState: () => StoreState) => {
@@ -27,25 +26,27 @@ export const setStoreAccessor = (storeGetState: () => StoreState) => {
 };
 
 userApiClient.interceptors.request.use((config) => {
-  console.log('Full request URL:', `${config.baseURL ?? ''}${config.url}`);
-  
-  // Use getState function instead of direct store access
-  const { auth } = getState();
-  
-  if (auth.accessToken) {
-    // Only set if not already set
-    if (!config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${auth.accessToken}`;
-    }
+  // Only log in development for security
+  if (process.env.NODE_ENV === "development") {
+    console.log('Full request URL:', `${config.baseURL ?? ''}${config.url}`);
   }
-  
+
+  const { auth } = getState();
+  // Ensure headers object exists
+  config.headers = config.headers ?? {};
+  if (auth.accessToken && !config.headers?.Authorization) {
+    config.headers.Authorization = `Bearer ${auth.accessToken}`;
+  }
   return config;
 });
 
 userApiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("API Error:", error.response?.status, error.response?.data);
+    // Only log in development for security
+    if (process.env.NODE_ENV === "development") {
+      console.error("API Error:", error.response?.status, error.response?.data);
+    }
     return Promise.reject(error);
   }
 );
