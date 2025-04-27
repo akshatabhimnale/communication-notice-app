@@ -1,9 +1,16 @@
 import noticeApiClient from "./apiClients/noticeApiClient";
 import { AxiosError } from "axios";
 import { getTokenFromCookie, clearTokenCookie } from "@/services/userService";
-import {Notice, SchemaField, DynamicSchema, NoticeType, PaginatedResponse, ApiSchemaField, ApiResponse ,UploadSchemaResponse} from "@/types/noticeTypesInterface";  
-
-
+import {
+  Notice,
+  SchemaField,
+  DynamicSchema,
+  NoticeType,
+  PaginatedResponse,
+  ApiSchemaField,
+  ApiResponse,
+  UploadSchemaResponse,
+} from "@/types/noticeTypesInterface";
 
 // Transform component's dynamic_schema to API's expected format
 const transformDynamicSchemaForApi = (
@@ -28,19 +35,28 @@ const transformDynamicSchema = (
   const fields = apiSchema.fields || {};
   return Object.entries(fields).reduce((acc, [key, field]) => {
     if (key.includes(",")) {
-      // Split combined key from API
       const subFields = key.split(",").map((f) => f.trim());
       subFields.forEach((subField) => {
         acc[subField] = {
           label: subField,
-          type: field.type === "float" ? "number" : field.type === "string" ? "text" : (field.type as "text" | "number" | "date" | "boolean"),
+          type:
+            field.type === "float"
+              ? "number"
+              : field.type === "string"
+              ? "text"
+              : (field.type as "text" | "number" | "date" | "boolean"),
           required: field.required,
         };
       });
     } else {
       acc[key] = {
         label: field.label,
-        type: field.type === "float" ? "number" : field.type === "string" ? "text" : (field.type as "text" | "number" | "date" | "boolean"),
+        type:
+          field.type === "float"
+            ? "number"
+            : field.type === "string"
+            ? "text"
+            : (field.type as "text" | "number" | "date" | "boolean"),
         required: field.required,
       };
     }
@@ -49,7 +65,9 @@ const transformDynamicSchema = (
 };
 
 // Infer field type from CSV data sample
-const inferFieldType = (value: string): "text" | "number" | "date" | "boolean" => {
+const inferFieldType = (
+  value: string
+): "text" | "number" | "date" | "boolean" => {
   if (!value) return "text";
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return "date";
   if (/^(true|false)$/i.test(value)) return "boolean";
@@ -66,10 +84,9 @@ export const createNotice = async (data: Notice): Promise<Notice> => {
   const token = getTokenFromCookie();
   if (!token) {
     throw new Error("No authentication token found. Please log in.");
-  } else{
-    const response = await noticeApiClient.post<Notice>("/notices/", data);
-    return response.data; 
   }
+  const response = await noticeApiClient.post<Notice>("/notices/", data);
+  return response.data;
 };
 
 export const updateNotice = async (id: string, data: Notice) => {
@@ -96,9 +113,10 @@ export const createNoticeType = async (
       description: noticeData.description || null,
       dynamic_schema: transformDynamicSchemaForApi(noticeData.dynamic_schema),
     };
-    // console.log("Sending to server:", JSON.stringify(apiPayload, null, 2));
-    const response = await noticeApiClient.post<ApiResponse>("/notice-types/", apiPayload);
-    // console.log("Server response (FULL):", JSON.stringify(response.data, null, 2));
+    const response = await noticeApiClient.post<ApiResponse>(
+      "/notice-types/",
+      apiPayload
+    );
     const apiData = response.data.data;
     return {
       id: apiData.id,
@@ -113,11 +131,15 @@ export const createNoticeType = async (
       console.error("Full error:", err.response?.data, err.config);
       if (err.response?.status === 401) {
         clearTokenCookie();
-        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
       }
       throw new Error(
         err.response
-          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+          ? `API Error ${err.response.status}: ${JSON.stringify(
+              err.response.data
+            )}`
           : "Network Error: Unable to reach the server"
       );
     }
@@ -125,24 +147,32 @@ export const createNoticeType = async (
   }
 };
 
-export const fetchNoticeTypes = async (page: number = 1): Promise<PaginatedResponse> => {
+export const fetchNoticeTypes = async (
+  page: number = 1
+): Promise<PaginatedResponse> => {
   const token = getTokenFromCookie();
   if (!token) {
     throw new Error("No authentication token found. Please log in.");
   }
   try {
-    const response = await noticeApiClient.get<PaginatedResponse>(`/notice-types/?page=${page}`);
+    const response = await noticeApiClient.get<PaginatedResponse>(
+      `/notice-types/?page=${page}`
+    );
     return response.data;
   } catch (err: unknown) {
     if (err instanceof AxiosError) {
       console.error("Full error:", err.response?.data, err.config);
       if (err.response?.status === 401) {
         clearTokenCookie();
-        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
       }
       throw new Error(
         err.response
-          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+          ? `API Error ${err.response.status}: ${JSON.stringify(
+              err.response.data
+            )}`
           : "Network Error: Unable to reach the server"
       );
     }
@@ -154,7 +184,9 @@ export const fetchNoticeTypeById = async (id: string): Promise<NoticeType> => {
   const token = getTokenFromCookie();
   if (!token) throw new Error("No authentication token found. Please log in.");
   try {
-    const response = await noticeApiClient.get<ApiResponse>(`/notice-types/${id}/`);
+    const response = await noticeApiClient.get<ApiResponse>(
+      `/notice-types/${id}/`
+    );
     const apiData = response.data.data;
     return {
       id: apiData.id,
@@ -169,11 +201,15 @@ export const fetchNoticeTypeById = async (id: string): Promise<NoticeType> => {
       console.error("Full error:", err.response?.data, err.config);
       if (err.response?.status === 401) {
         clearTokenCookie();
-        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
       }
       throw new Error(
         err.response
-          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+          ? `API Error ${err.response.status}: ${JSON.stringify(
+              err.response.data
+            )}`
           : "Network Error: Unable to reach the server"
       );
     }
@@ -194,7 +230,10 @@ export const updateNoticeType = async (
       description: noticeData.description,
       dynamic_schema: transformDynamicSchemaForApi(noticeData.dynamic_schema),
     };
-    const response = await noticeApiClient.put<ApiResponse>(`/notice-types/${id}/`, apiPayload);
+    const response = await noticeApiClient.put<ApiResponse>(
+      `/notice-types/${id}/`,
+      apiPayload
+    );
     const apiData = response.data.data;
     return {
       id: apiData.id,
@@ -209,11 +248,15 @@ export const updateNoticeType = async (
       console.error("Full error:", err.response?.data, err.config);
       if (err.response?.status === 401) {
         clearTokenCookie();
-        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
       }
       throw new Error(
         err.response
-          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+          ? `API Error ${err.response.status}: ${JSON.stringify(
+              err.response.data
+            )}`
           : "Network Error: Unable to reach the server"
       );
     }
@@ -228,17 +271,20 @@ export const deleteNoticeType = async (id: string): Promise<void> => {
   }
   try {
     await noticeApiClient.delete(`/notice-types/${id}/`);
-    // console.log(`Deleted notice type: id=${id}`);
   } catch (err: unknown) {
     if (err instanceof AxiosError) {
       console.error("Full error:", err.response?.data, err.config);
       if (err.response?.status === 401) {
         clearTokenCookie();
-        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
       }
       throw new Error(
         err.response
-          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+          ? `API Error ${err.response.status}: ${JSON.stringify(
+              err.response.data
+            )}`
           : "Network Error: Unable to reach the server"
       );
     }
@@ -246,25 +292,26 @@ export const deleteNoticeType = async (id: string): Promise<void> => {
   }
 };
 
-export const uploadSchemaFromCsv = async (file: File): Promise<Record<string, SchemaField>> => {
+export const uploadSchemaFromCsv = async (
+  file: File
+): Promise<Record<string, SchemaField>> => {
   const token = getTokenFromCookie();
   if (!token) {
     throw new Error("No authentication token found. Please log in.");
   }
   try {
-    // Parse CSV
     const text = await file.text();
     const lines = text.split("\n").filter((line) => line.trim());
     if (lines.length < 1) {
       throw new Error("CSV is empty or invalid");
     }
-    const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, '')); // Remove leading/trailing quotes
+    const headers = lines[0]
+      .split(",")
+      .map((h) => h.trim().replace(/^"|"$/g, ""));
     if (headers.some((h) => !h || h.includes(","))) {
       throw new Error("Invalid CSV headers: Empty or contain commas");
     }
-    console.log("CSV headers:", headers);
 
-    // Upload to API
     const formData = new FormData();
     formData.append("file", file);
     const response = await noticeApiClient.post<UploadSchemaResponse>(
@@ -277,9 +324,7 @@ export const uploadSchemaFromCsv = async (file: File): Promise<Record<string, Sc
     if (!response.data.success) {
       throw new Error(`API Error: ${JSON.stringify(response.data.errors)}`);
     }
-    // console.log("API response:", JSON.stringify(response.data.data, null, 2));
 
-    // Build schema from CSV headers and data
     const transformedSchema: Record<string, SchemaField> = {};
     const firstRow = lines[1]?.split(",").map((v) => v.trim()) || [];
     headers.forEach((header, index) => {
@@ -292,7 +337,6 @@ export const uploadSchemaFromCsv = async (file: File): Promise<Record<string, Sc
       };
     });
 
-    // console.log("Transformed schema:", JSON.stringify(transformedSchema, null, 2));
     return transformedSchema;
   } catch (err: unknown) {
     console.error("UploadSchemaFromCsv error:", err);
@@ -300,14 +344,20 @@ export const uploadSchemaFromCsv = async (file: File): Promise<Record<string, Sc
       console.error("Full error:", err.response?.data, err.config);
       if (err.response?.status === 401) {
         clearTokenCookie();
-        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
       }
       throw new Error(
         err.response
-          ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+          ? `API Error ${err.response.status}: ${JSON.stringify(
+              err.response.data
+            )}`
           : "Network Error: Unable to reach the server"
       );
     }
-    throw new Error(err instanceof Error ? err.message : "An unexpected error occurred");
+    throw new Error(
+      err instanceof Error ? err.message : "An unexpected error occurred"
+    );
   }
 };

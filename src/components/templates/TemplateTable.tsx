@@ -1,5 +1,5 @@
 "use client" 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
@@ -18,11 +18,14 @@ export default function TemplateTable() {
     count
   } = useAppSelector((state: RootState) => state.templates);
 
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
   useEffect(() => {
-    if (templates.length === 0) {
+    if (isInitialLoad) {
       dispatch(fetchTemplatesThunk(undefined));
+      setIsInitialLoad(false);
     }
-  }, [dispatch, templates.length]);
+  }, [dispatch, isInitialLoad]);
 
   // const handleDelete = (id: string) => {
   //   dispatch(removeTemplate(id));
@@ -30,7 +33,7 @@ export default function TemplateTable() {
   // };
 
   const handlePageChange = (url: string | null) => {
-    if (url && !loading) {
+    if (url) {
       dispatch(fetchTemplatesThunk(url));
     }
   };
@@ -43,7 +46,7 @@ export default function TemplateTable() {
       headerName: "Updated Date",
       flex: 1,
       renderCell: (params) => {
-        console.log("Cell params:", params);
+        
         if (params.row.updated_at) {
           try {
             const date = new Date(params.row.updated_at);
@@ -99,10 +102,10 @@ export default function TemplateTable() {
         paginationModel={paginationModel}
         onPaginationModelChange={(newModel) => {
           setPaginationModel(newModel);
-          if (newModel.page > paginationModel.page && nextPageUrl) {
+          if (newModel.page > paginationModel.page && nextPageUrl && !loading) {
             handlePageChange(nextPageUrl);
-          } else if (newModel.page < paginationModel.page && prevPageUrl) {
-            handlePageChange(prevPageUrl);
+          } else if (newModel.page < paginationModel.page && prevPageUrl && !loading) {
+             handlePageChange(prevPageUrl);
           }
         }}
       />

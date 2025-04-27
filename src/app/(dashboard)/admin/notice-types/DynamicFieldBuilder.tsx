@@ -236,25 +236,7 @@ export default function DynamicFieldBuilder({
         </Box>
       )}
 
-      <Box sx={{ mt: 0 }}>
-        <Typography variant="subtitle1" gutterBottom>
-          Schema Preview
-        </Typography>
-        <pre
-          style={{
-            background: "#f5f5f5",
-            border: "1px solid #ccc",
-            padding: "10px",
-            borderRadius: "4px",
-            whiteSpace: "pre-wrap",
-            minHeight: "100px",
-            maxHeight: "200px",
-            overflowY: "auto",
-          }}
-        >
-          {formatSchemaPreview(initialSchema)}
-        </pre>
-      </Box>
+      
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{editIndex !== null ? "Edit Field" : "Add New Field"}</DialogTitle>
