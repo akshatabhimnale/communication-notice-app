@@ -1,10 +1,8 @@
 export interface Notice {
-  id: string;
-  org_id: string;
-  name: string;
-  description: string | null;
-  dynamic_schema: Record<string, SchemaField>;
-  title?: string;
+  id?: string;
+  title: string;
+  description: string;
+  createdAt?: string;
 }
 
 export interface SchemaField {

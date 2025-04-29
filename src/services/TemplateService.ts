@@ -61,3 +61,28 @@ export const createTemplate = async (data: {
     throw new Error("An unexpected error occurred");
   }
 };
+
+// Delete a template by ID
+export const deleteTemplate = async (id: string) => {
+  const token = getTokenFromCookie();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in.");
+  }
+  try {
+    const response = await noticeApiClient.delete(`/templates/${id}/`);
+    return response.data;
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      console.error("Error deleting template:", error.response?.data);
+      throw new Error(
+        error.response
+          ? `API Error ${error.response.status}: ${JSON.stringify(
+              error.response.data
+            )}`
+          : "Network Error: Unable to reach the server"
+      );
+    }
+    console.error("Error deleting template:", error);
+    throw new Error("An unexpected error occurred");
+  }
+};

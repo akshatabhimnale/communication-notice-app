@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import {
   Container,
@@ -12,6 +11,8 @@ import {
 import DynamicFieldBuilder from "@/app/(dashboard)/admin/notice-types/DynamicFieldBuilder";
 import TemplateSetupDialog from "../templates/TemplateSetupDialog";
 import { NoticeTypeFormProps, NoticeTypeFormValues } from "@/types/noticeTypesInterface";
+import { AppWindow } from "lucide-react";
+
 
 export const NoticeTypeForm = ({
   initialValues = {
@@ -132,44 +133,57 @@ export const NoticeTypeForm = ({
       </Typography>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        <TextField
-          label="Name"
-          value={values.name}
-          onChange={(e) =>
-            setValues((prev) => ({ ...prev, name: e.target.value }))
-          }
-          fullWidth
-          error={!!errors.name}
-          helperText={errors.name || "Required, max 100 characters"}
-          inputProps={{ maxLength: 100 }}
-          variant="outlined"
-          disabled={isSubmitting}
-        />
+        
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}> {/* Added Box wrapper */}
+          <TextField
+            label="Name"
+            role="NoticeName"
+            placeholder="Enter notice type name"
+            required
+            value={values.name}
+            onChange={(e) =>setValues((prev) => ({ ...prev, name: e.target.value }))}
+            error={!!errors.name}
+            helperText={errors.name || "Required, max 100 characters"}
+            inputProps={{ maxLength: 100 }}
+            variant="outlined"
+            disabled={isSubmitting}
+            // need normal width for the text field
+            sx={{width: '30ch'}}
+          />
+          <Button
+            variant="contained"
+            onClick={() => setOpenTemplateDialog(true)}
+            disabled={isSubmitting}
+            sx={{width: '32ch',textTransform: "none"}}
+            color="primary"
+            size="large"
+            role="Setup_btn"
+            startIcon={<AppWindow />}
+          >
+            Setup Common Template
+          </Button>
+        </Box> 
+        
 
         <TextField
           label="Description"
+          role="Description"
+          placeholder="Enter description"
           value={values.description || ""}
           onChange={(e) =>
-            setValues((prev) => ({
-              ...prev,
-              description: e.target.value || null,
-            }))
+        setValues((prev) => ({
+          ...prev,
+          description: e.target.value || null,
+        }))
           }
-          fullWidth
+          sx={{ width: "100%" }}
           multiline
           rows={2}
           helperText="Optional"
           variant="outlined"
           disabled={isSubmitting}
         />
-        <Button
-            variant="outlined"
-            color="primary"
-            onClick={() => setOpenTemplateDialog(true)}
-            disabled={isSubmitting}
-          >
-            Setup Common Template
-        </Button>
+        
 
         <DynamicFieldBuilder
           onSchemaChange={(schema) =>

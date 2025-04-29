@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { fetchTemplates, PaginatedTemplateResponse, template } from "@/services/TemplateService";
+import { fetchTemplates, PaginatedTemplateResponse, template,deleteTemplate } from "@/services/TemplateService";
 import { AxiosError } from "axios";
 
 interface TemplatesState {
@@ -38,6 +38,20 @@ export const fetchTemplatesThunk = createAsyncThunk(
   }
 );
 
+// Async thunk for deleting a template
+export const deleteTemplateThunk = createAsyncThunk(
+  "templates/delete",
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await deleteTemplate(id);
+      return id;
+    } catch (error: any) {
+      const message = error?.message || "Failed to delete template";
+      return rejectWithValue({ message });
+    }
+  }
+);
+
 const templatesSlice = createSlice({
   name: "templates",
   initialState,
@@ -47,10 +61,6 @@ const templatesSlice = createSlice({
         
         tpl.id === action.payload.id ? { ...action.payload } : tpl
       );
-    },
-    removeTemplate: (state, action: PayloadAction<string>) => {
-      
-      state.templates = state.templates.filter((tpl) => tpl.id !== action.payload);
     },
   },
   extraReducers: (builder) => {
@@ -73,9 +83,16 @@ const templatesSlice = createSlice({
         state.loading = false;
         const payload = action.payload as { status?: number; message?: string };
         state.error = payload?.message || "Unknown error";
+      })
+      .addCase(deleteTemplateThunk.fulfilled, (state, action: PayloadAction<string>) => {
+        state.templates = state.templates.filter((tpl) => tpl.id !== action.payload);
+      })
+      .addCase(deleteTemplateThunk.rejected, (state, action) => {
+        const payload = action.payload as { message?: string };
+        state.error = payload?.message || "Failed to delete template";
       });
   },
 });
 
-export const { updateTemplate, removeTemplate } = templatesSlice.actions;
+export const { updateTemplate } = templatesSlice.actions;
 export default templatesSlice.reducer;

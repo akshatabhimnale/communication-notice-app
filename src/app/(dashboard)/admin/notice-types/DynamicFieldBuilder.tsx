@@ -156,21 +156,6 @@ export default function DynamicFieldBuilder({
     }
   };
 
-  // Format schema for preview, show only CSV-derived fields
-  const formatSchemaPreview = (schema: Schema) => {
-    // Filter fields that match CSV-derived pattern (no manual edits unless from upload)
-    const csvDerivedSchema = Object.fromEntries(
-      Object.entries(schema).filter(([key]) => !fields.some((f) => f.field_name === key && !initialSchema[key]))
-    );
-    return JSON.stringify(csvDerivedSchema, null, 2)
-      .replace(/"/g, "")
-      .replace(/:/g, ": ")
-      .replace(/{/g, "{")
-      .replace(/}/g, "}")
-      .replace(/,/g, ", ")
-      .trim();
-  };
-
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {schemaError && (
@@ -207,6 +192,7 @@ export default function DynamicFieldBuilder({
               onChange={handleFileUpload}
               sx={{ display: "none" }}
             />
+            
           </Button>
         </Box>
       </Box>
