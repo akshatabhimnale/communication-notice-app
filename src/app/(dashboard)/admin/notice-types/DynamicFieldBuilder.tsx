@@ -1,24 +1,7 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import {
-  Box,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Checkbox,
-  FormControlLabel,
-  Button,
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip,
-  CircularProgress,
-  Input,
+  Box,TextField,Select,MenuItem,FormControl,InputLabel,Checkbox,FormControlLabel,Button,Typography,Dialog,DialogTitle,DialogContent,DialogActions,Chip,CircularProgress,Input,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -163,7 +146,7 @@ export default function DynamicFieldBuilder({
           {schemaError}
         </Typography>
       )}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <Box sx={{ display: "flex",flexDirection:"column" ,justifyContent: "space-between", alignItems: "center",gap: 2 }}>
         <Typography variant="h6">Dynamic Schema Builder</Typography>
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button
