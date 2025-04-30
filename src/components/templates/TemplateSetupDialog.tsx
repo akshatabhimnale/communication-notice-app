@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Drawer,
   Button,
   TextField,
   MenuItem,
@@ -11,9 +8,13 @@ import {
   IconButton,
   Alert,
   AlertTitle,
+  useMediaQuery,
+  Typography,
+  Divider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import { useTheme } from "@mui/material/styles";
 
 interface TemplateSetupDialogProps {
   open: boolean;
@@ -59,6 +60,8 @@ export default function TemplateSetupDialog({
   const [channel, setChannel] = useState("email");
   const [templateContent, setTemplateContent] = useState(DEFAULT_TEMPLATE);
   const [error, setError] = useState("");
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // Reset form state when dialog opens or initialName changes
   useEffect(() => {
@@ -95,102 +98,71 @@ export default function TemplateSetupDialog({
   };
 
   return (
-    <Dialog
+    <Drawer
+      anchor={isMobile ? "bottom" : "right"}
       open={open}
       onClose={handleClose}
-      maxWidth="sm"
-      fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          bgcolor: "#f0f8ff", 
+          width: isMobile ? "100%" : 480,
+          maxWidth: "100vw",
+          borderTopLeftRadius: isMobile ? 16 : 0,
+          borderTopRightRadius: isMobile ? 16 : 0,
+          borderBottomLeftRadius: !isMobile ? 16 : 0,
+          bgcolor: "#f0f8ff",
           boxShadow: 8,
+          position: "fixed",
+          top: "64px", // Adjust to your navbar height
+          height: isMobile ? "calc(70vh - 64px)" : "calc(100vh - 64px)",
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
-      <DialogTitle
-        sx={{
-          bgcolor: 'teal.600', 
-          color: '#000',
-          py: 2,
-          px: 3,
-          fontSize: '1.15rem',
-          fontWeight: 600,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderTopLeftRadius: 12,
-          borderTopRightRadius: 12,
-        }}
-      >
-        Setup Common Template
+      <Box sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        px: 3,
+        py: 2,
+        borderBottom: 1,
+        borderColor: "#b2dfdb",
+  bgcolor: "#00897b",
+      }}>
+        <Typography component="div" sx={{ fontSize: "1.15rem", fontWeight: 400 }}>
+          <b>Setup Common Template for</b>
+          <span style={{fontWeight: 700, fontSize: "1.2rem", textTransform: "capitalize" }}> {name}</span>
+        </Typography>
         <IconButton
-            aria-label="close"
-            onClick={handleClose}
-            sx={{
-                color: "#000",
-                ml: 1,
-                '&:hover': { color: "#fff" }
-            }}
-            size="small"
+          aria-label="close"
+          onClick={handleClose}
+          sx={{ color: "#000", ml: 1, '&:hover': { color: "#fff" } }}
+          size="small"
         >
-            <CloseIcon fontSize="inherit" />
+          <CloseIcon fontSize="inherit" />
         </IconButton>
-      </DialogTitle>
-
-      <DialogContent
-        sx={{
-          bgcolor: "#f0f8ff", 
-          pt: 3,
-          pb: 2,
-          px: 4,
-        }}
-      >
+      </Box>
+      <Divider />
+      <Box sx={{ flex: 1, overflowY: "auto", p: 4, bgcolor: "#f0f8ff" }}>
         {error && (
-            <Alert
-                severity="error"
-                icon={<ErrorOutlineIcon fontSize="inherit" />}
-                sx={{
-                  mb: 2.5,
-                  bgcolor: "#ffeaea",
-                  color: "#b71c1c",
-                  border: "1px solid #f44336",
-                  borderRadius: 2,
-                  px: 2,
-                  py: 1.5,
-                }}
-            >
-                <AlertTitle sx={{ fontWeight: 700, color: "#b71c1c" }}>Error</AlertTitle>
-                {error}
-            </Alert>
-        )}
-
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-          <TextField
-            label="Template Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter template name"
-            role="TemplateName"
-            fullWidth
-            required
-            variant="filled"
-            error={!!error && !name.trim()}
+          <Alert
+            severity="error"
+            icon={<ErrorOutlineIcon fontSize="inherit" />}
             sx={{
-              bgcolor: '#e0f7fa',
+              mb: 2.5,
+              bgcolor: "#ffeaea",
+              color: "#b71c1c",
+              border: "1px solid #f44336",
               borderRadius: 2,
-              '& .MuiFilledInput-root': {
-          borderRadius: 2,
-          backgroundColor: '#e0f7fa',
-              },
-              '& .MuiInputBase-input': { 
-                color: '#333',
-              },
-              '& .MuiFilledInput-underline:before': { borderBottom: '2px solid #26a69a' },
-              '& .MuiFilledInput-underline:after': { borderBottom: '2px solid #00897b' },
+              px: 2,
+              py: 1.5,
             }}
-            InputLabelProps={{ sx: { color: "#00897b" } }}
-          />
+          >
+            <AlertTitle sx={{ fontWeight: 700, color: "#b71c1c" }}>Error</AlertTitle>
+            {error}
+          </Alert>
+        )}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
           <TextField
             select
             label="Channel"
@@ -204,15 +176,11 @@ export default function TemplateSetupDialog({
               bgcolor: '#e0f7fa',
               borderRadius: 2,
               '& .MuiFilledInput-root': {
-          borderRadius: 2,
-          backgroundColor: '#e0f7fa',
+                borderRadius: 2,
+                backgroundColor: '#e0f7fa',
               },
-              '& .MuiSelect-select': { 
-           color: '#333',
-              },
-              '& .MuiInputBase-input': {
-           color: '#333',
-              },
+              '& .MuiSelect-select': { color: '#333' },
+              '& .MuiInputBase-input': { color: '#333' },
               '& .MuiFilledInput-underline:before': { borderBottom: '2px solid #26a69a' },
               '& .MuiFilledInput-underline:after': { borderBottom: '2px solid #00897b' },
             }}
@@ -220,7 +188,7 @@ export default function TemplateSetupDialog({
           >
             {CHANNEL_OPTIONS.map((option) => (
               <MenuItem key={option} value={option}>
-          {option.charAt(0).toUpperCase() + option.slice(1)}
+                {option.charAt(0).toUpperCase() + option.slice(1)}
               </MenuItem>
             ))}
           </TextField>
@@ -238,72 +206,70 @@ export default function TemplateSetupDialog({
               bgcolor: '#e8f5e9',
               borderRadius: 2,
               '& .MuiFilledInput-root': {
-          borderRadius: 2,
-          backgroundColor: '#e8f5e9',
+                borderRadius: 2,
+                backgroundColor: '#e8f5e9',
               },
-              '& .MuiInputBase-input': {
-          color: '#333',
-              },
+              '& .MuiInputBase-input': { color: '#333' },
               '& .MuiFilledInput-underline:before': { borderBottom: '2px solid #43a047' },
               '& .MuiFilledInput-underline:after': { borderBottom: '2px solid #1b5e20' },
             }}
             InputLabelProps={{ sx: { color: "#388e3c" } }}
-            
           />
         </Box>
-      </DialogContent>
-
-      <DialogActions
-        sx={{
-          bgcolor: "#e0f2f1",
-          borderTop: 1,
-          borderColor: '#b2dfdb',
-          px: 4,
-          py: 2,
-          borderBottomLeftRadius: 12,
-          borderBottomRightRadius: 12,
-        }}
-      >
+      </Box>
+      <Divider />
+      <Box sx={{
+        bgcolor: "#e0f2f1",
+        borderTop: 1,
+        borderColor: '#b2dfdb',
+        px: 4,
+        py: 2,
+        borderBottomLeftRadius: isMobile ? 16 : 0,
+        borderBottomRightRadius: isMobile ? 16 : 0,
+        display: 'flex',
+        gap: 2,
+        justifyContent: 'flex-end',
+      }}>
         <Button
-            onClick={handleClose}
-            variant="outlined"
-            color="secondary"
-            sx={{
+          onClick={handleClose}
+          variant="outlined"
+          color="secondary"
+          sx={{
+            borderColor: "#00897b",
+            color: "#00897b",
+            fontWeight: 500,
+            px: 2.5,
+            py: 1,
+            borderRadius: 2,
+            '&:hover': {
+              bgcolor: "#b2dfdb",
               borderColor: "#00897b",
-              color: "#00897b",
-              fontWeight: 500,
-              px: 2.5,
-              py: 1,
-              borderRadius: 2,
-              '&:hover': {
-                bgcolor: "#b2dfdb",
-                borderColor: "#00897b",
-              }
-            }}
+            }
+          }}
         >
           Cancel
         </Button>
         <Button
-            onClick={handleConfirm}
-            color="primary"
-            variant="contained"
-            sx={{
-              bgcolor: "#00897b",
-              color: "#fff",
-              fontWeight: 600,
-              px: 3,
-              py: 1.2,
-              borderRadius: 2,
-              boxShadow: 2,
-              '&:hover': {
-                bgcolor: "#00695c",
-                boxShadow: 4,
-              }
-            }}
+          onClick={handleConfirm}
+          color="primary"
+          variant="contained"
+          sx={{
+            bgcolor: "#00897b",
+            color: "#fff",
+            fontWeight: 600,
+            px: 3,
+            py: 1.2,
+            borderRadius: 2,
+            boxShadow: 2,
+            '&:hover': {
+              bgcolor: "#00695c",
+              boxShadow: 4,
+            }
+          }}
         >
           Confirm Setup
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </Drawer>
   );
 }
