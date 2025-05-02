@@ -17,6 +17,7 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 
 const TemplatePreview: React.FC = () => {
   const [templateContent, setTemplateContent] = useState<string>("");
+  const [previewContent, setPreviewContent] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { enqueueSnackbar } = useSnackbar();
 
@@ -43,6 +44,7 @@ const TemplatePreview: React.FC = () => {
         reader.onload = (e) => {
           const content = e.target?.result as string;
           setTemplateContent(content);
+          setPreviewContent(content); // Update preview for file uploads
           setIsLoading(false);
         };
         reader.readAsText(file);
@@ -58,6 +60,7 @@ const TemplatePreview: React.FC = () => {
         if (isValidHtml(rawText)) {
           // If the content is valid HTML, use it directly
           setTemplateContent(rawText);
+          setPreviewContent(rawText); // Update preview for file uploads
         } else {
           // Otherwise, convert to HTML using Mammoth
           const htmlResult = await Mammoth.convertToHtml({ arrayBuffer });
@@ -75,6 +78,7 @@ const TemplatePreview: React.FC = () => {
             </html>
           `;
           setTemplateContent(fullHtml);
+          setPreviewContent(fullHtml); // Update preview for file uploads
         }
         setIsLoading(false);
       } else {
@@ -94,9 +98,18 @@ const TemplatePreview: React.FC = () => {
     }
   };
 
+  // Handle compile button click
+  const handleCompile = () => {
+    setPreviewContent(templateContent); // Update preview with current input
+    enqueueSnackbar("Preview updated.", {
+      variant: "success",
+      autoHideDuration: 2000,
+    });
+  };
+
   return (
-    <Box sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
-      <Typography variant="h4" gutterBottom>
+    <Box sx={{ p: 1, maxWidth: 1200, mx: "auto" }}>
+      <Typography variant="h6" gutterBottom>
         Template Preview
       </Typography>
       <Grid container spacing={2}>
@@ -111,28 +124,36 @@ const TemplatePreview: React.FC = () => {
                 id="templateContent"
                 label="Enter HTML content"
                 multiline
-                rows={10}
+                rows={15} // Increased height
                 value={templateContent}
                 onChange={(e) => setTemplateContent(e.target.value)}
                 fullWidth
                 variant="outlined"
                 sx={{ mb: 2 }}
               />
-              <Button
-                component="label"
-                variant="outlined"
-                startIcon={<UploadFileIcon />}
-                disabled={isLoading}
-                sx={{ mb: 1 }}
-              >
-                {isLoading ? "Processing..." : "Upload File"}
-                <input
-                  type="file"
-                  accept=".html,.docx"
-                  onChange={handleFileUpload}
-                  hidden
-                />
-              </Button>
+              <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={<UploadFileIcon />}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Processing..." : "Upload File"}
+                  <input
+                    type="file"
+                    accept=".html,.docx"
+                    onChange={handleFileUpload}
+                    hidden
+                  />
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleCompile}
+                  disabled={isLoading || !templateContent}
+                >
+                  Compile
+                </Button>
+              </Box>
               <Typography variant="caption" color="text.secondary">
                 Only HTML or DOCX files are supported.
               </Typography>
@@ -152,7 +173,7 @@ const TemplatePreview: React.FC = () => {
                   border: "1px solid",
                   borderColor: "grey.300",
                   borderRadius: 1,
-                  height: "calc(10 * 1.5em + 32px)", // Match TextField height
+                  height: "calc(15 * 1.5em + 32px)", // Increased height to match TextField
                   overflow: "auto",
                 }}
               >
@@ -167,9 +188,9 @@ const TemplatePreview: React.FC = () => {
                   >
                     <CircularProgress size={24} />
                   </Box>
-                ) : templateContent ? (
+                ) : previewContent ? (
                   <iframe
-                    srcDoc={templateContent}
+                    srcDoc={previewContent}
                     style={{ width: "100%", height: "100%", border: "none" }}
                     title="Template Preview"
                     sandbox="allow-same-origin"
