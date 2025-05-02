@@ -38,6 +38,24 @@ export const fetchTemplatesThunk = createAsyncThunk(
   }
 );
 
+// Async thunk for updating a template
+export const updateTemplateThunk = createAsyncThunk(
+  "templates/update",
+  async (data: template, { rejectWithValue }) => {
+    try {
+      const response = await fetchTemplates(data.id);
+      return response;
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError;
+      const status = axiosError.response?.status;
+      const message =
+        (axiosError.response?.data as { message?: string })?.message ||
+        "Failed to update template";
+      return rejectWithValue({ status, message });
+    }
+  }
+);
+
 // Async thunk for deleting a template
 export const deleteTemplateThunk = createAsyncThunk(
   "templates/delete",
@@ -45,8 +63,8 @@ export const deleteTemplateThunk = createAsyncThunk(
     try {
       await deleteTemplate(id);
       return id;
-    } catch (error: any) {
-      const message = error?.message || "Failed to delete template";
+    } catch (error: unknown) {
+      const message = (error as { message?: string })?.message || "Failed to delete template";
       return rejectWithValue({ message });
     }
   }

@@ -6,7 +6,15 @@ import { RootState } from "@/store";
 import { fetchTemplatesThunk, deleteTemplateThunk } from "@/store/slices/templatesSlice";
 import { Button } from "@mui/material";
 import { Trash2 } from "lucide-react";
+import TemplatePreview from "./TemplatePreview";
 
+type Template = {
+  id: string;
+  notice_type?: string;
+  channel?: string;
+  updated_at?: string;
+  template_content: string;
+};
 
 export default function TemplateTable() {
   const dispatch = useAppDispatch();
@@ -21,6 +29,8 @@ export default function TemplateTable() {
   } = useAppSelector((state: RootState) => state.templates);
 
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
     if (isInitialLoad) {
@@ -39,8 +49,20 @@ export default function TemplateTable() {
       });
   };
 
+  const handleEditPreview = (template: unknown) => {
+    setSelectedTemplate(template as Template);
+    setPreviewOpen(true);
+  };
 
-  
+  const handlePreviewClose = () => {
+    setPreviewOpen(false);
+    setSelectedTemplate(null);
+  };
+
+  const handleTemplateUpdated = () => {
+    dispatch(fetchTemplatesThunk(undefined));
+  };
+
   const handlePageChange = (url: string | null) => {
     if (url) {
       dispatch(fetchTemplatesThunk(url));
@@ -68,6 +90,24 @@ export default function TemplateTable() {
         }
         return <span>-</span>;
       }
+    },
+    {
+      field:"edit and preview",
+      headerName: "Edit and Preview",
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams) => (
+        <Button
+          color="inherit"
+          variant="contained"
+          size="small"
+          onClick={() => handleEditPreview(params.row)}
+          style={{ cursor: "pointer" }}
+        >
+          Edit and Preview
+        </Button>
+      ),
+      width: 180,
     },
     {
       field: "actions",
@@ -115,9 +155,23 @@ export default function TemplateTable() {
           if (newModel.page > paginationModel.page && nextPageUrl && !loading) {
             handlePageChange(nextPageUrl);
           } else if (newModel.page < paginationModel.page && prevPageUrl && !loading) {
-             handlePageChange(prevPageUrl);
+            handlePageChange(prevPageUrl);
           }
         }}
+      />
+      <TemplatePreview
+        open={previewOpen}
+        onClose={handlePreviewClose}
+        template={
+          selectedTemplate
+            ? {
+                ...selectedTemplate,
+                channel: selectedTemplate.channel || "",
+                notice_type: selectedTemplate.notice_type || "",
+              }
+            : null
+        }
+        onUpdated={handleTemplateUpdated}
       />
     </div>
   );
