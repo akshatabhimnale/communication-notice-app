@@ -19,8 +19,8 @@ import {
 } from "@/services/userService";
 import { styles } from "./profileStyles";
 import { ProfileSkeleton } from "./ProfileSkeleton";
-
 import { useSnackbar } from "notistack";
+
 interface UserProfile {
   id: string;
   username: string;
@@ -50,11 +50,11 @@ export default function ProfilePage() {
     email: "",
     phone: "",
   });
-  const [updateError, setUpdateError] = useState<string | null>(null);
-  // New state for save operation
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   const { enqueueSnackbar } = useSnackbar();
+
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -70,50 +70,83 @@ export default function ProfilePage() {
         const errorMessage =
           err instanceof Error ? err.message : "An unexpected error occurred";
         setError(errorMessage);
+        enqueueSnackbar(errorMessage, { 
+          variant: "error", 
+          autoHideDuration: 3000 
+        });
         if (errorMessage.includes("Please log in again")) {
-          setTimeout(() => router.push("/auth/login"), 2000);
+          setTimeout(() => router.push("/auth/login"), 1500);
         }
       } finally {
         setLoading(false);
       }
     };
 
-    // Removed router from dependencies as it doesn't change
     loadProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array
+  }, [enqueueSnackbar, router]);
+
+  const validateEmail = (email: string): string | null => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) return "Email is required";
+    if (!emailRegex.test(email)) return "Please enter a valid email address";
+    return null;
+  };
+
+  const validatePhone = (phone: string): string | null => {
+    const phoneRegex = /^\+?[\d\s-]{10,}$/;
+    if (phone && !phoneRegex.test(phone)) 
+      return "Please enter a valid phone number (minimum 10 digits)";
+    return null;
+  };
+
+  const validateUsername = (username: string): string | null => {
+    if (!username.trim()) return "Username is required";
+    return null;
+  };
 
   const handleEditToggle = () => {
     setEditMode(!editMode);
-    setUpdateError(null);
+    setValidationErrors({});
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear update error when user starts typing
-    setUpdateError(null);
-  };
 
-  // Basic email validation regex
-  const isValidEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    // Validate on change
+    let error: string | null = null;
+    if (name === "email") {
+      error = validateEmail(value);
+    } else if (name === "phone") {
+      error = validatePhone(value);
+    } else if (name === "username") {
+      error = validateUsername(value);
+    }
+
+    setValidationErrors((prev) => ({
+      ...prev,
+      [name]: error || "",
+    }));
   };
 
   const handleUpdate = async () => {
     if (!profile) return;
 
-    // Validate inputs
-    if (!formData.username.trim()) {
-      setUpdateError("Username is required");
-      return;
-    }
-    if (!formData.email.trim()) {
-      setUpdateError("Email is required");
-      return;
-    }
-    if (!isValidEmail(formData.email)) {
-      setUpdateError("Please enter a valid email address");
+    // Validate before submission
+    const usernameError = validateUsername(formData.username);
+    const emailError = validateEmail(formData.email);
+    const phoneError = validatePhone(formData.phone);
+
+    const newErrors: Record<string, string> = {};
+    if (usernameError) newErrors.username = usernameError;
+    if (emailError) newErrors.email = emailError;
+    if (phoneError) newErrors.phone = phoneError;
+
+    if (Object.keys(newErrors).length > 0) {
+      setValidationErrors(newErrors);
+      Object.values(newErrors).forEach((error) => {
+        enqueueSnackbar(error, { variant: "error", autoHideDuration: 3000 });
+      });
       return;
     }
 
@@ -127,13 +160,32 @@ export default function ProfilePage() {
       const updatedProfile = await updateCurrentUserProfile(profile, updates);
       setProfile(updatedProfile);
       setEditMode(false);
-      setUpdateError(null);
-      enqueueSnackbar("Profile updated successfully", { variant: "success" });
+      setValidationErrors({});
+      enqueueSnackbar("Profile updated successfully", { 
+        variant: "success", 
+        autoHideDuration: 3000 
+      });
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to update profile";
-      setUpdateError(errorMessage);
-      enqueueSnackbar(errorMessage, { variant: "error" });
+      if (typeof err === "object" && err !== null) {
+        const errors = err as Record<string, string[]>;
+        if (Object.keys(errors).length > 0) {
+          const newValidationErrors: Record<string, string> = {};
+          Object.entries(errors).forEach(([field, messages]) => {
+            newValidationErrors[field] = messages.join(", ");
+            messages.forEach((message) =>
+              enqueueSnackbar(message, { variant: "error", autoHideDuration: 3000 })
+            );
+          });
+          setValidationErrors(newValidationErrors);
+        } else {
+          const errorMessage = "Failed to update profile";
+          enqueueSnackbar(errorMessage, { variant: "error", autoHideDuration: 3000 });
+        }
+      } else {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to update profile";
+        enqueueSnackbar(errorMessage, { variant: "error", autoHideDuration: 3000 });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -204,7 +256,9 @@ export default function ProfilePage() {
                     onChange={handleInputChange}
                     fullWidth
                     variant="outlined"
-                    error={!!updateError && updateError.includes("Username")}
+                    error={!!validationErrors.username}
+                    helperText={validationErrors.username}
+                    sx={{ mb: 2 }}
                   />
                   <TextField
                     label="Email"
@@ -214,7 +268,9 @@ export default function ProfilePage() {
                     fullWidth
                     variant="outlined"
                     type="email"
-                    error={!!updateError && updateError.includes("Email")}
+                    error={!!validationErrors.email}
+                    helperText={validationErrors.email}
+                    sx={{ mb: 2 }}
                   />
                   <TextField
                     label="Phone"
@@ -223,18 +279,16 @@ export default function ProfilePage() {
                     onChange={handleInputChange}
                     fullWidth
                     variant="outlined"
+                    error={!!validationErrors.phone}
+                    helperText={validationErrors.phone || "Optional"}
+                    sx={{ mb: 2 }}
                   />
-                  {updateError && (
-                    <Typography color="error" variant="body2">
-                      {updateError}
-                    </Typography>
-                  )}
                   <Box sx={styles.buttonGroup}>
                     <Button
                       variant="contained"
                       color="primary"
                       onClick={handleUpdate}
-                      disabled={isSaving} // Disable button while saving
+                      disabled={isSaving || !!validationErrors.username || !!validationErrors.email || !!validationErrors.phone}
                     >
                       {isSaving ? "Saving..." : "Save"}
                     </Button>

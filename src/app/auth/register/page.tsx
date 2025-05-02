@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { fetchOrganizations } from "@/services/organizationService";
+import { useSnackbar } from "notistack";
 
 export interface Organization {
   name: string;
@@ -47,9 +48,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]> | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     const loadOrganizations = async () => {
@@ -58,15 +61,42 @@ export default function RegisterPage() {
         setAllOrganizations(orgs);
       } catch (error) {
         setApiError(error instanceof Error ? error.message : "Failed to load organizations");
+        enqueueSnackbar("Failed to load organizations", { variant: "error",autoHideDuration: 3000  });
       }
     };
-
     loadOrganizations();
-  }, []);
+  }, [enqueueSnackbar]);
+
+  const validateEmail = (email: string): string | null => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) return "Email is required";
+    if (!emailRegex.test(email)) return "Please enter a valid email address";
+    return null;
+  };
+
+  const validatePhone = (phone: string): string | null => {
+    const phoneRegex = /^\+?[\d\s-]{10,}$/;
+    if (!phone) return "Phone number is required";
+    if (!phoneRegex.test(phone)) return "Please enter a valid phone number (minimum 10 digits)";
+    return null;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+
+    // Validate on change
+    let error: string | null = null;
+    if (name === "email") {
+      error = validateEmail(value);
+    } else if (name === "phone") {
+      error = validatePhone(value);
+    }
+
+    setValidationErrors((prev) => ({
+      ...prev,
+      [name]: error || "",
+    }));
   };
 
   const handleSelectChange = (e: SelectChangeEvent) => {
@@ -94,12 +124,29 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate before submission
+    const emailError = validateEmail(formData.email);
+    const phoneError = validatePhone(formData.phone);
+
+    if (emailError || phoneError) {
+      setValidationErrors({
+        email: emailError || "",
+        phone: phoneError || "",
+      });
+      return;
+    }
+
     setLoading(true);
     setErrors(null);
 
     try {
       await dispatch(registerThunk(formData)).unwrap();
       setLoading(false);
+      enqueueSnackbar("Registration successful!", {
+        variant: "success",
+        autoHideDuration: 2500 
+      });
       router.push("/auth/login");
     } catch (err: unknown) {
       setLoading(false);
@@ -108,6 +155,7 @@ export default function RegisterPage() {
         setErrors(errors);
       } else {
         setErrors({ general: ["An unexpected error occurred"] });
+        enqueueSnackbar("An unexpected error occurred", { variant: "error" });
       }
     }
   };
@@ -117,7 +165,7 @@ export default function RegisterPage() {
       <CssBaseline />
       <Box
         sx={{
-          marginTop: 8,
+          marginTop: 2,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -130,7 +178,7 @@ export default function RegisterPage() {
           Sign Up
         </Typography>
 
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
           <TextField
             fullWidth
             label="Username"
@@ -152,8 +200,10 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={handleChange}
               required
-              error={!!errors?.email}
-              helperText={errors?.email?.join(", ")}
+              error={!!errors?.email || !!validationErrors.email}
+              helperText={
+                validationErrors.email || errors?.email?.join(", ") || ""
+              }
             />
             <TextField
               fullWidth
@@ -199,8 +249,8 @@ export default function RegisterPage() {
             onChange={handleChange}
             required
             margin="normal"
-            error={!!errors?.phone}
-            helperText={errors?.phone?.join(", ")}
+            error={!!errors?.phone || !!validationErrors.phone}
+            helperText={validationErrors.phone || errors?.phone?.join(", ") || ""}
           />
 
           <Select
@@ -210,7 +260,7 @@ export default function RegisterPage() {
             onChange={handleSelectChange}
             required
             displayEmpty
-            sx={{ mt: 2 }}
+            sx={{ mt: 1 }}
             error={!!errors?.role}
           >
             <MenuItem value="" disabled>
@@ -276,8 +326,8 @@ export default function RegisterPage() {
             fullWidth
             variant="contained"
             color="primary"
-            sx={{ mt: 3 }}
-            disabled={loading}
+            sx={{ mt: 2 }}
+            disabled={loading || !!validationErrors.email || !!validationErrors.phone}
           >
             {loading ? "Registering..." : "Register"}
           </Button>

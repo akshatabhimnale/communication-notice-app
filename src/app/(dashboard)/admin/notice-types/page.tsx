@@ -22,6 +22,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { useSnackbar } from "notistack";
 
 export default function NoticeTypesList() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function NoticeTypesList() {
   const [allNoticeTypes, setAllNoticeTypes] = useState<NoticeType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [timeoutOccurred, setTimeoutOccurred] = useState(false);
   const [search, setSearch] = useState("");
   const [paginationModel, setPaginationModel] = useState({
     page: 0, // DataGrid page is 0-based, API page is 1-based
@@ -43,9 +45,24 @@ export default function NoticeTypesList() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedNotice, setSelectedNotice] = useState<NoticeType | null>(null);
 
+  const { enqueueSnackbar } = useSnackbar();
+
   const loadNotices = useCallback(async () => {
-    setLoading(true);
+    const timeoutId: NodeJS.Timeout = setTimeout(() => {
+      if (loading) {
+        setTimeoutOccurred(true);
+        setLoading(false);
+        setError("Loading timed out. Please try again.");
+        enqueueSnackbar("Loading timed out. Please try again.", {
+          variant: "error",
+          autoHideDuration: 5000,
+        });
+      }
+    }, 5000); // 5-second timeout
+
     try {
+      setLoading(true);
+      setTimeoutOccurred(false);
       const data: PaginatedResponse = await fetchNoticeTypes(paginationModel.page + 1); // API page is 1-based
       if (!Array.isArray(data.results)) {
         throw new Error("Invalid data format. Expected an array in results.");
@@ -61,12 +78,27 @@ export default function NoticeTypesList() {
       setError(err instanceof Error ? err.message : "Failed to load notice types");
     } finally {
       setLoading(false);
+      clearTimeout(timeoutId);
     }
-  }, [paginationModel.page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginationModel.page, enqueueSnackbar]);
 
   const loadAllNotices = useCallback(async () => {
-    setLoading(true);
+    const timeoutId: NodeJS.Timeout = setTimeout(() => {
+      if (loading) {
+        setTimeoutOccurred(true);
+        setLoading(false);
+        setError("Loading timed out. Please try again.");
+        enqueueSnackbar("Loading timed out. Please try again.", {
+          variant: "error",
+          autoHideDuration: 5000,
+        });
+      }
+    }, 5000); // 5-second timeout
+
     try {
+      setLoading(true);
+      setTimeoutOccurred(false);
       let allNotices: NoticeType[] = [];
       let page = 1;
       let hasNext = true;
@@ -94,8 +126,10 @@ export default function NoticeTypesList() {
       }
     } finally {
       setLoading(false);
+      clearTimeout(timeoutId);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enqueueSnackbar]);
 
   useEffect(() => {
     if (!search) {
@@ -158,20 +192,29 @@ export default function NoticeTypesList() {
       setAllNoticeTypes((prev) => prev.filter((n) => n.id !== noticeToDelete.id));
       setTotalRows((prev) => prev - 1);
       handleDeleteClose();
+      enqueueSnackbar("Notice type deleted successfully", {
+        variant: "success",
+        autoHideDuration: 3000,
+      });
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "Failed to delete notice type");
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete notice type";
+      setDeleteError(errorMessage);
+      enqueueSnackbar(errorMessage, {
+        variant: "error",
+        autoHideDuration: 3000,
+      });
       setDeleting(false);
     }
   };
 
-  if (loading) {
+  if (loading && !timeoutOccurred) {
     return <NoticeTypeSkeleton />;
   }
 
-  if (error) {
+  if (error || timeoutOccurred) {
     return (
       <Box sx={{ textAlign: "center", mt: 4 }}>
-        <Typography color="error">{error}</Typography>
+        <Typography color="error">{error || "Failed to load notice types"}</Typography>
         <Button variant="contained" onClick={search ? loadAllNotices : loadNotices} sx={{ mt: 2 }}>
           Retry
         </Button>
@@ -307,8 +350,8 @@ export default function NoticeTypesList() {
             <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
             <DialogContent>
               <DialogContentText>
-                Are you sure you want to delete the notice type &quot;{noticeToDelete?.name}&quot;?
-                This action cannot be undone.
+                Are you sure you want to delete the notice type{" "}
+                <strong>{noticeToDelete?.name}</strong>? This action cannot be undone.
               </DialogContentText>
               {deleteError && (
                 <Typography color="error" sx={{ mt: 2 }}>
