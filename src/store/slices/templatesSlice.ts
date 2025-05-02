@@ -45,12 +45,16 @@ export const deleteTemplateThunk = createAsyncThunk(
     try {
       await deleteTemplate(id);
       return id;
-    } catch (error: any) {
-      const message = error?.message || "Failed to delete template";
+    } catch (error: unknown) {
+      let message = "Failed to delete template";
+      if (error instanceof Error) {
+        message = error.message;
+      }
       return rejectWithValue({ message });
     }
   }
 );
+
 
 const templatesSlice = createSlice({
   name: "templates",
