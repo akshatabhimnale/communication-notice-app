@@ -55,7 +55,7 @@ export default function NoticeTypesList() {
         setError("Loading timed out. Please try again.");
         enqueueSnackbar("Loading timed out. Please try again.", {
           variant: "error",
-          autoHideDuration: 3000,
+          autoHideDuration: 5000,
         });
       }
     }, 5000); // 5-second timeout
@@ -91,7 +91,7 @@ export default function NoticeTypesList() {
         setError("Loading timed out. Please try again.");
         enqueueSnackbar("Loading timed out. Please try again.", {
           variant: "error",
-          autoHideDuration: 3000,
+          autoHideDuration: 5000,
         });
       }
     }, 5000); // 5-second timeout
