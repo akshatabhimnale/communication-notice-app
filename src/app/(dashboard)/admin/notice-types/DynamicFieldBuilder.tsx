@@ -1,24 +1,7 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import {
-  Box,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Checkbox,
-  FormControlLabel,
-  Button,
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip,
-  CircularProgress,
-  Input,
+  Box,TextField,Select,MenuItem,FormControl,InputLabel,Checkbox,FormControlLabel,Button,Typography,Dialog,DialogTitle,DialogContent,DialogActions,Chip,CircularProgress,Input,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -156,21 +139,6 @@ export default function DynamicFieldBuilder({
     }
   };
 
-  // Format schema for preview, show only CSV-derived fields
-  const formatSchemaPreview = (schema: Schema) => {
-    // Filter fields that match CSV-derived pattern (no manual edits unless from upload)
-    const csvDerivedSchema = Object.fromEntries(
-      Object.entries(schema).filter(([key]) => !fields.some((f) => f.field_name === key && !initialSchema[key]))
-    );
-    return JSON.stringify(csvDerivedSchema, null, 2)
-      .replace(/"/g, "")
-      .replace(/:/g, ": ")
-      .replace(/{/g, "{")
-      .replace(/}/g, "}")
-      .replace(/,/g, ", ")
-      .trim();
-  };
-
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {schemaError && (
@@ -178,7 +146,7 @@ export default function DynamicFieldBuilder({
           {schemaError}
         </Typography>
       )}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <Box sx={{ display: "flex",flexDirection:"column" ,justifyContent: "space-between", alignItems: "center",gap: 2 }}>
         <Typography variant="h6">Dynamic Schema Builder</Typography>
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button
@@ -207,6 +175,7 @@ export default function DynamicFieldBuilder({
               onChange={handleFileUpload}
               sx={{ display: "none" }}
             />
+            
           </Button>
         </Box>
       </Box>
@@ -236,25 +205,7 @@ export default function DynamicFieldBuilder({
         </Box>
       )}
 
-      <Box sx={{ mt: 0 }}>
-        <Typography variant="subtitle1" gutterBottom>
-          Schema Preview
-        </Typography>
-        <pre
-          style={{
-            background: "#f5f5f5",
-            border: "1px solid #ccc",
-            padding: "10px",
-            borderRadius: "4px",
-            whiteSpace: "pre-wrap",
-            minHeight: "100px",
-            maxHeight: "200px",
-            overflowY: "auto",
-          }}
-        >
-          {formatSchemaPreview(initialSchema)}
-        </pre>
-      </Box>
+      
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{editIndex !== null ? "Edit Field" : "Add New Field"}</DialogTitle>

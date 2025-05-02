@@ -68,7 +68,7 @@ const NAVIGATION: Navigation = [
   {
     title: "Templates",
     icon: <LayersIcon />,
-    segment: "",
+    segment: "admin/templates",
   },
   {
     title: "Reports",
