@@ -4,7 +4,7 @@ import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
 import { fetchTemplatesThunk, deleteTemplateThunk } from "@/store/slices/templatesSlice";
-import { Button } from "@mui/material";
+import { Button, Skeleton, Box } from "@mui/material"; // Import Skeleton and Box
 import { Trash2 } from "lucide-react";
 import TemplatePreview from "./TemplatePreview";
 
@@ -134,31 +134,57 @@ export default function TemplateTable() {
     page: 0,
   });
 
+  // Skeleton Loader Component
+  const DataGridSkeleton = () => (
+    <Box sx={{ height: 400, width: '100%' }}>
+      <Skeleton
+        variant="rectangular"
+        sx={{ width: '100%', height: 45, mb: 2, borderRadius: 1 }}
+        animation="wave"
+      />
+      {[...Array(paginationModel.pageSize)].map((_, rowIndex) => (
+        <Box key={rowIndex} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+          {[...Array(5)].map((_, colIndex) => (
+            <Skeleton
+              key={colIndex}
+              variant="rectangular"
+              sx={{ flex: 1, height: 45, borderRadius: 1 }}
+              animation="wave"
+            />
+          ))}
+        </Box>
+      ))}
+    </Box>
+  );
+
   return (
     <div style={{ width: "100%" }}>
       {error && <p style={{ color: "red" }}>Error: {error}</p>}
-      <DataGrid
-        rows={templates}
-        columns={columns}
-        getRowId={(row) => row.id}
-        loading={loading}
-        pagination={true}
-        paginationMode="server"
-        disableRowSelectionOnClick
-        autoHeight
-        hideFooterSelectedRowCount
-        rowCount={count || 0} //total count from your API response
-        pageSizeOptions={[10]}
-        paginationModel={paginationModel}
-        onPaginationModelChange={(newModel) => {
-          setPaginationModel(newModel);
-          if (newModel.page > paginationModel.page && nextPageUrl && !loading) {
-            handlePageChange(nextPageUrl);
-          } else if (newModel.page < paginationModel.page && prevPageUrl && !loading) {
-            handlePageChange(prevPageUrl);
-          }
-        }}
-      />
+      {loading ? ( // Conditionally render Skeleton or DataGrid
+        <DataGridSkeleton />
+      ) : (
+        <DataGrid
+          rows={templates}
+          columns={columns}
+          getRowId={(row) => row.id}
+          pagination={true}
+          paginationMode="server"
+          disableRowSelectionOnClick
+          autoHeight
+          hideFooterSelectedRowCount
+          rowCount={count || 0} //total count from your API response
+          pageSizeOptions={[10]}
+          paginationModel={paginationModel}
+          onPaginationModelChange={(newModel) => {
+            setPaginationModel(newModel);
+            if (newModel.page > paginationModel.page && nextPageUrl && !loading) {
+              handlePageChange(nextPageUrl);
+            } else if (newModel.page < paginationModel.page && prevPageUrl && !loading) {
+              handlePageChange(prevPageUrl);
+            }
+          }}
+        />
+      )}
       <TemplatePreview
         open={previewOpen}
         onClose={handlePreviewClose}
