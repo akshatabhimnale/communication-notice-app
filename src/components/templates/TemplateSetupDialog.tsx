@@ -27,28 +27,25 @@ interface TemplateSetupDialogProps {
   initialName: string;
 }
 
-const CHANNEL_OPTIONS = ["email", "whatsapp", "sms", "rpad"];
+export const CHANNEL_OPTIONS = ["email", "whatsapp", "sms", "rpad"];
 
-const DEFAULT_TEMPLATE = `<!DOCTYPE html>
-<html>
+const DEFAULT_TEMPLATE = `
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <title>Communication Notice</title>
-  <style>
-    body { font-family: sans-serif; line-height: 1.6; }
-    b { font-weight: bold; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample HTML Preview</title>
 </head>
 <body>
-  <b>Communication Notice Template</b><br/><br/>
-  Dear <b>[NAME]</b>,<br/><br/>
-  This is a sample template to get you started.<br/>
-  <b>Feel free to edit this text directly below.</b> You can use basic HTML tags like &lt;b&gt;bold&lt;/b&gt;, &lt;i&gt;italics&lt;/i&gt;, and &lt;br/&gt; for line breaks.<br/><br/>
-  Replace placeholders like [NAME] with dynamic data fields if needed.<br/><br/>
-  After customizing, confirm the setup to save and use this template for your communications.<br/><br/>
-  Best regards,<br/>
-  Your Organization
+    <h1>Hello from HTML!</h1>
+    <p>This is a simple HTML file with an image.</p>
+    <img src="" alt="City Image">
 </body>
-</html>`;
+</html>
+`
+
+;
 
 export default function TemplateSetupDialog({
   open,

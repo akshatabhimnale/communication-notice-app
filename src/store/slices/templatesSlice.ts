@@ -1,5 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { fetchTemplates, PaginatedTemplateResponse, template,deleteTemplate } from "@/services/TemplateService";
+import {
+  fetchTemplates,
+  PaginatedTemplateResponse,
+  template,
+  deleteTemplate,
+} from "@/services/TemplateService";
 import { AxiosError } from "axios";
 
 interface TemplatesState {
@@ -38,6 +43,24 @@ export const fetchTemplatesThunk = createAsyncThunk(
   }
 );
 
+// Async thunk for updating a template
+export const updateTemplateThunk = createAsyncThunk(
+  "templates/update",
+  async (data: template, { rejectWithValue }) => {
+    try {
+      const response = await fetchTemplates(data.id);
+      return response;
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError;
+      const status = axiosError.response?.status;
+      const message =
+        (axiosError.response?.data as { message?: string })?.message ||
+        "Failed to update template";
+      return rejectWithValue({ status, message });
+    }
+  }
+);
+
 // Async thunk for deleting a template
 export const deleteTemplateThunk = createAsyncThunk(
   "templates/delete",
@@ -46,15 +69,12 @@ export const deleteTemplateThunk = createAsyncThunk(
       await deleteTemplate(id);
       return id;
     } catch (error: unknown) {
-      let message = "Failed to delete template";
-      if (error instanceof Error) {
-        message = error.message;
-      }
+      const message =
+        (error as { message?: string })?.message || "Failed to delete template";
       return rejectWithValue({ message });
     }
   }
 );
-
 
 const templatesSlice = createSlice({
   name: "templates",
@@ -62,7 +82,6 @@ const templatesSlice = createSlice({
   reducers: {
     updateTemplate: (state, action: PayloadAction<template>) => {
       state.templates = state.templates.map((tpl) =>
-        
         tpl.id === action.payload.id ? { ...action.payload } : tpl
       );
     },
@@ -88,9 +107,14 @@ const templatesSlice = createSlice({
         const payload = action.payload as { status?: number; message?: string };
         state.error = payload?.message || "Unknown error";
       })
-      .addCase(deleteTemplateThunk.fulfilled, (state, action: PayloadAction<string>) => {
-        state.templates = state.templates.filter((tpl) => tpl.id !== action.payload);
-      })
+      .addCase(
+        deleteTemplateThunk.fulfilled,
+        (state, action: PayloadAction<string>) => {
+          state.templates = state.templates.filter(
+            (tpl) => tpl.id !== action.payload
+          );
+        }
+      )
       .addCase(deleteTemplateThunk.rejected, (state, action) => {
         const payload = action.payload as { message?: string };
         state.error = payload?.message || "Failed to delete template";
