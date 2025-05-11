@@ -5,6 +5,16 @@ export interface Notice {
   createdAt?: string;
 }
 
+export interface BulkUploadResponse {
+  success: boolean;
+  data: {
+    created: Notice[];
+    failed: Array<{ row: number; error: string }>;
+  };
+  errors: Record<string, unknown>;
+  meta: Record<string, unknown>;
+}
+
 export interface SchemaField {
   label: string;
   type: "text" | "number" | "date" | "boolean";
@@ -96,4 +106,14 @@ export interface NoticeTypeFormProps {
   mode: "create" | "edit";
   orgId: string;
   isLoading?: boolean;
+}
+
+
+export interface TransformedNoticeType {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string | null;
+  dynamic_schema: Record<string, SchemaField>;
+  created_at: string;
 }
