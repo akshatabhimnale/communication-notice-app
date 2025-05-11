@@ -46,12 +46,12 @@ const NAVIGATION: Navigation = [
   {
     title: "User Actions",
     icon: <DescriptionIcon />,
-    segment: "",
+    segment: "notices",
     children: [
       {
         title: "Bulk Upload",
         icon: <CloudUploadIcon />,
-        segment: "",
+        segment: "bulk-upload",
       },
       {
         title: "Bulk Send",
