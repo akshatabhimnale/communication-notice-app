@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import {
   Drawer,
   Button,
@@ -11,10 +12,16 @@ import {
   useMediaQuery,
   Typography,
   Divider,
+  Chip,
+  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { useTheme } from "@mui/material/styles";
+
+// Import Monaco editor types
+import type { editor } from 'monaco-editor';
+const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
 interface TemplateSetupDialogProps {
   open: boolean;
@@ -25,6 +32,7 @@ interface TemplateSetupDialogProps {
     template_content: string;
   }) => void;
   initialName: string;
+  dynamicFields?: Array<{ field_name: string; label?: string } | string>;
 }
 
 export const CHANNEL_OPTIONS = ["email", "whatsapp", "sms", "rpad"];
@@ -43,32 +51,111 @@ const DEFAULT_TEMPLATE = `
     <img src="" alt="City Image">
 </body>
 </html>
-`
-
-;
+`;
 
 export default function TemplateSetupDialog({
   open,
   onClose,
   onConfirm,
   initialName,
+  dynamicFields = [],
 }: TemplateSetupDialogProps) {
   const [name, setName] = useState(initialName);
   const [channel, setChannel] = useState("email");
   const [templateContent, setTemplateContent] = useState(DEFAULT_TEMPLATE);
+  const [previewContent, setPreviewContent] = useState(DEFAULT_TEMPLATE);
   const [error, setError] = useState("");
+  const [isCompiling, setIsCompiling] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  
+  // Editor reference for cursor position management
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
-  // Reset form state when dialog opens or initialName changes
   useEffect(() => {
     if (open) {
       setName(initialName);
-      setChannel("email"); 
-      setTemplateContent(DEFAULT_TEMPLATE.replace("[NAME]", initialName || "Recipient")); // Handle empty initialName
-      setError(""); 
+      setChannel("email");
+      setTemplateContent(DEFAULT_TEMPLATE.replace("[NAME]", initialName || "Recipient"));
+      setPreviewContent(DEFAULT_TEMPLATE.replace("[NAME]", initialName || "Recipient"));
+      setError("");
     }
   }, [initialName, open]);
+
+  // Function to insert field placeholder at cursor position
+  const insertFieldAtCursor = (fieldName: string) => {
+    if (!editorRef.current) return;
+    
+    const editor = editorRef.current;
+    const selection = editor.getSelection();
+    
+    if (selection) {
+      const placeholder = `{{${fieldName}}}`;
+      const operation = {
+        range: selection,
+        text: placeholder,
+        forceMoveMarkers: true
+      };
+      
+      editor.executeEdits("insert-field", [operation]);
+      editor.focus();
+      
+      // Update template content after insertion
+      const updatedContent = editor.getValue();
+      setTemplateContent(updatedContent);
+    }
+  };
+
+  // Function to handle editor initialization
+  const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
+    editorRef.current = editor;
+  };
+
+  // Replace placeholders with mock values for preview
+  const generatePreviewWithMockValues = (content: string) => {
+    let previewWithMocks = content;
+    
+    // Regular expression to find all {{field_name}} patterns
+    const placeholderRegex = /{{([^}]+)}}/g;
+    
+    // Replace each placeholder with a mock value
+    previewWithMocks = previewWithMocks.replace(placeholderRegex, (match, fieldName) => {
+      // Generate appropriate mock value based on field type
+      const fieldInfo = dynamicFields.find(f => {
+        if (typeof f === 'string') return f === fieldName;
+        return f.field_name === fieldName;
+      });
+      
+      if (!fieldInfo) return match; // Keep original if field not found
+      
+      // If field info is available and has a type, generate appropriate mock
+      if (typeof fieldInfo !== 'string') {
+        // Find the field in dynamicFields and check its type
+        const mockValues: Record<string, string> = {
+          text: `Example ${fieldName}`,
+          number: "42",
+          date: "2025-05-08",
+          boolean: "Yes",
+        };
+        
+        // Default to text if type not specified
+        return mockValues.text;
+      }
+      
+      // Default mock value
+      return `Example ${fieldName}`;
+    });
+    
+    return previewWithMocks;
+  };
+
+  const handleCompile = () => {
+    setIsCompiling(true);
+    // Generate preview with mock values for placeholders
+    const contentWithMockValues = generatePreviewWithMockValues(templateContent);
+    setPreviewContent(contentWithMockValues);
+    setTimeout(() => setIsCompiling(false), 500);
+  };
 
   const handleConfirm = () => {
     let validationError = "";
@@ -79,19 +166,32 @@ export default function TemplateSetupDialog({
     } else if (!templateContent.trim()) {
       validationError = "Template Content cannot be empty.";
     }
-
     if (validationError) {
       setError(validationError);
       return;
     }
-
     setError("");
     onConfirm({ name, channel, template_content: templateContent });
   };
 
   const handleClose = () => {
-    setError(""); 
-    onClose(); 
+    setError("");
+    onClose();
+  };
+
+  // Render dynamic fields as chips (display only)
+  const renderDynamicFields = () => {
+    if (!dynamicFields || dynamicFields.length === 0) return null;
+    return (
+      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2, mt: 2 }}>
+        {dynamicFields.map((field, idx) => {
+          const label = typeof field === "string" ? field : (field.label || field.field_name);
+          return (
+            <Chip key={idx} label={label} color="secondary" variant="filled" onClick={() => insertFieldAtCursor(typeof field === "string" ? field : field.field_name)} />
+          );
+        })}
+      </Box>
+    );
   };
 
   return (
@@ -101,15 +201,12 @@ export default function TemplateSetupDialog({
       onClose={handleClose}
       PaperProps={{
         sx: {
-          width: isMobile ? "100%" : 480,
+          width: isMobile ? "100%" : '80vw',
           maxWidth: "100vw",
-          borderTopLeftRadius: isMobile ? 16 : 0,
-          borderTopRightRadius: isMobile ? 16 : 0,
-          borderBottomLeftRadius: !isMobile ? 16 : 0,
-          bgcolor: "#f0f8ff",
+          borderRadius: 2,
           boxShadow: 8,
           position: "fixed",
-          top: "64px", // Adjust to your navbar height
+          top: "64px",
           height: isMobile ? "calc(70vh - 64px)" : "calc(100vh - 64px)",
           display: "flex",
           flexDirection: "column",
@@ -123,8 +220,8 @@ export default function TemplateSetupDialog({
         px: 3,
         py: 2,
         borderBottom: 1,
-        borderColor: "#b2dfdb",
-  bgcolor: "#00897b",
+        borderColor: "divider",
+        bgcolor: "background.paper",
       }}>
         <Typography component="div" sx={{ fontSize: "1.15rem", fontWeight: 400 }}>
           <b>Setup Common Template for</b>
@@ -133,33 +230,26 @@ export default function TemplateSetupDialog({
         <IconButton
           aria-label="close"
           onClick={handleClose}
-          sx={{ color: "#000", ml: 1, '&:hover': { color: "#fff" } }}
+          sx={{ ml: 1 }}
           size="small"
         >
           <CloseIcon fontSize="inherit" />
         </IconButton>
       </Box>
       <Divider />
-      <Box sx={{ flex: 1, overflowY: "auto", p: 4, bgcolor: "#f0f8ff" }}>
+      <Box sx={{ flex: 1, overflowY: "auto", p: 4, bgcolor: "background.default" }}>
         {error && (
           <Alert
             severity="error"
             icon={<ErrorOutlineIcon fontSize="inherit" />}
-            sx={{
-              mb: 2.5,
-              bgcolor: "#ffeaea",
-              color: "#b71c1c",
-              border: "1px solid #f44336",
-              borderRadius: 2,
-              px: 2,
-              py: 1.5,
-            }}
+            sx={{ mb: 2.5 }}
           >
-            <AlertTitle sx={{ fontWeight: 700, color: "#b71c1c" }}>Error</AlertTitle>
+            <AlertTitle sx={{ fontWeight: 700 }}>Error</AlertTitle>
             {error}
           </Alert>
         )}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        {/* Channel Dropdown and Refresh Preview Button */}
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
           <TextField
             select
             label="Channel"
@@ -169,19 +259,6 @@ export default function TemplateSetupDialog({
             required
             variant="filled"
             error={!!error && !channel}
-            sx={{
-              bgcolor: '#e0f7fa',
-              borderRadius: 2,
-              '& .MuiFilledInput-root': {
-                borderRadius: 2,
-                backgroundColor: '#e0f7fa',
-              },
-              '& .MuiSelect-select': { color: '#333' },
-              '& .MuiInputBase-input': { color: '#333' },
-              '& .MuiFilledInput-underline:before': { borderBottom: '2px solid #26a69a' },
-              '& .MuiFilledInput-underline:after': { borderBottom: '2px solid #00897b' },
-            }}
-            InputLabelProps={{ sx: { color: "#00897b" } }}
           >
             {CHANNEL_OPTIONS.map((option) => (
               <MenuItem key={option} value={option}>
@@ -189,40 +266,85 @@ export default function TemplateSetupDialog({
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            label="Template Content (HTML is supported)"
-            value={templateContent}
-            onChange={(e) => setTemplateContent(e.target.value)}
-            fullWidth
-            multiline
-            minRows={6}
-            required
-            variant="filled"
-            error={!!error && !templateContent.trim()}
-            sx={{
-              bgcolor: '#e8f5e9',
-              borderRadius: 2,
-              '& .MuiFilledInput-root': {
-                borderRadius: 2,
-                backgroundColor: '#e8f5e9',
-              },
-              '& .MuiInputBase-input': { color: '#333' },
-              '& .MuiFilledInput-underline:before': { borderBottom: '2px solid #43a047' },
-              '& .MuiFilledInput-underline:after': { borderBottom: '2px solid #1b5e20' },
-            }}
-            InputLabelProps={{ sx: { color: "#388e3c" } }}
-          />
+          <Button
+            variant="outlined"
+            onClick={handleCompile}
+            disabled={isCompiling}
+            sx={{ textTransform: "none", minWidth: 160 }}
+          >
+            {isCompiling ? <CircularProgress size={20} /> : "Refresh Preview"}
+          </Button>
+        </Box>
+        {/* Dynamic Fields as Chips (schema) */}
+        {renderDynamicFields()}
+        {/* Editor and Preview Side by Side */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, minHeight: 400, height: 400 }}>
+          {/* Editor Section */}
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderRight: { md: `1px solid ${theme.palette.divider}` }, height: '100%' }}>
+            <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1 }}>
+              EDITOR
+            </Typography>
+            <Box sx={{ flex: 1, minHeight: 300, height: '100%', position: 'relative' }}>
+              <MonacoEditor
+                height="100%"
+                defaultLanguage="html"
+                value={templateContent}
+                onChange={(v) => setTemplateContent(v || "")}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  wordWrap: "on",
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  formatOnPaste: true,
+                  formatOnType: true,
+                  padding: { top: 12 },
+                  quickSuggestions: true,
+                  autoClosingBrackets: "always",
+                  autoClosingQuotes: "always",
+                  autoIndent: "full",
+                  suggestOnTriggerCharacters: true,
+                }}
+                theme={theme.palette.mode === "dark" ? "vs-dark" : "vs-light"}
+                onMount={handleEditorDidMount}
+              />
+            </Box>
+          </Box>
+          {/* Preview Section */}
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1 }}>
+              LIVE PREVIEW
+            </Typography>
+            <Box sx={{ flex: 1, minHeight: 300, height: '100%', backgroundColor: theme.palette.background.paper, borderRadius: 2, p: 1, overflow: 'hidden', position: 'relative' }}>
+              {isCompiling ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : previewContent ? (
+                <iframe
+                  srcDoc={previewContent}
+                  style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, backgroundColor: theme.palette.background.paper }}
+                  title="Template Preview"
+                  sandbox="allow-same-origin"
+                />
+              ) : (
+                <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.palette.text.secondary }}>
+                  <Typography variant="body2">Compile template to see preview</Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
         </Box>
       </Box>
       <Divider />
       <Box sx={{
-        bgcolor: "#e0f2f1",
+        bgcolor: "background.paper",
         borderTop: 1,
-        borderColor: '#b2dfdb',
+        borderColor: 'divider',
         px: 4,
         py: 2,
-        borderBottomLeftRadius: isMobile ? 16 : 0,
-        borderBottomRightRadius: isMobile ? 16 : 0,
+        borderBottomLeftRadius: 2,
+        borderBottomRightRadius: 2,
         display: 'flex',
         gap: 2,
         justifyContent: 'flex-end',
@@ -231,18 +353,6 @@ export default function TemplateSetupDialog({
           onClick={handleClose}
           variant="outlined"
           color="secondary"
-          sx={{
-            borderColor: "#00897b",
-            color: "#00897b",
-            fontWeight: 500,
-            px: 2.5,
-            py: 1,
-            borderRadius: 2,
-            '&:hover': {
-              bgcolor: "#b2dfdb",
-              borderColor: "#00897b",
-            }
-          }}
         >
           Cancel
         </Button>
@@ -250,19 +360,6 @@ export default function TemplateSetupDialog({
           onClick={handleConfirm}
           color="primary"
           variant="contained"
-          sx={{
-            bgcolor: "#00897b",
-            color: "#fff",
-            fontWeight: 600,
-            px: 3,
-            py: 1.2,
-            borderRadius: 2,
-            boxShadow: 2,
-            '&:hover': {
-              bgcolor: "#00695c",
-              boxShadow: 4,
-            }
-          }}
         >
           Confirm Setup
         </Button>

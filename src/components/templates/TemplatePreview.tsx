@@ -80,25 +80,33 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({ open, onClose, templa
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth sx={{ '& .MuiDialog-paper': { height: 'calc(100% - 64px)' } }}>
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        px: 3, 
-        py: 2,
-        backgroundColor: theme.palette.background.paper,
-        borderBottom: `1px solid ${theme.palette.divider}`
-      }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xl"
+      fullWidth
+      sx={{ "& .MuiDialog-paper": { height: "calc(100% - 64px)" } }}
+    >
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 3,
+          py: 2,
+          backgroundColor: theme.palette.background.paper,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+        }}
+      >
         <Typography variant="h6" component="div">
           Template Preview & Edit
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
           <Button
             variant="outlined"
             onClick={handleCompile}
             disabled={isLoading}
-            sx={{ textTransform: 'none' }}
+            sx={{ textTransform: "none" }}
           >
             Refresh Preview
           </Button>
@@ -106,12 +114,14 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({ open, onClose, templa
             select
             label="Channel"
             value={channel}
-            onChange={e => setChannel(e.target.value)}
+            onChange={(e) => setChannel(e.target.value)}
             size="small"
-            sx={{ minWidth: 140, '& .MuiInputBase-root': { height: 40 } }}
+            sx={{ minWidth: 140, "& .MuiInputBase-root": { height: 40 } }}
           >
-            {CHANNEL_OPTIONS.map(opt => (
-              <MenuItem key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</MenuItem>
+            {CHANNEL_OPTIONS.map((opt) => (
+              <MenuItem key={opt} value={opt}>
+                {opt.charAt(0).toUpperCase() + opt.slice(1)}
+              </MenuItem>
             ))}
           </TextField>
           <Button
@@ -119,12 +129,12 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({ open, onClose, templa
             color="primary"
             onClick={handleSave}
             disabled={saving || isLoading}
-            sx={{ fontWeight: 600, textTransform: 'none' }}
+            sx={{ fontWeight: 600, textTransform: "none" }}
           >
-            {saving ? <CircularProgress size={20} /> : 'Save Changes'}
+            {saving ? <CircularProgress size={20} /> : "Save Changes"}
           </Button>
-          <IconButton 
-            onClick={onClose} 
+          <IconButton
+            onClick={onClose}
             size="small"
             aria-label="Close preview"
             sx={{ color: theme.palette.text.secondary }}
@@ -133,74 +143,93 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({ open, onClose, templa
           </IconButton>
         </Box>
       </DialogTitle>
-      
-      <DialogContent sx={{ 
-        p: 0, 
-        height: '100%', 
-        display: 'flex', 
-        backgroundColor: theme.palette.background.default 
-      }}>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: { xs: 'column', md: 'row' }, 
-          flex: 1, 
-          minHeight: 600 
-        }}>
+
+      <DialogContent
+        sx={{
+          p: 0,
+          height: "100%",
+          display: "flex",
+          backgroundColor: theme.palette.background.default,
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            flex: 1,
+            minHeight: 600,
+          }}
+        >
           {/* Editor Section */}
-          <Box sx={{ 
-            flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            borderRight: { md: `1px solid ${theme.palette.divider}` }
-          }}>
-            <Box sx={{ 
-              px: 2, 
-              py: 1, 
-              backgroundColor: theme.palette.background.paper,
-              borderBottom: `1px solid ${theme.palette.divider}`
-            }}>
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              borderRight: { md: `1px solid ${theme.palette.divider}` },
+            }}
+          >
+            <Box
+              sx={{
+                px: 2,
+                py: 1,
+                backgroundColor: theme.palette.background.paper,
+                borderBottom: `1px solid ${theme.palette.divider}`,
+              }}
+            >
               <Typography variant="subtitle2" color="textSecondary">
                 EDITOR
               </Typography>
             </Box>
-            <Box sx={{ 
-              flex: 1, 
-              position: 'relative',
-              '& .monaco-editor': { borderRadius: '0 0 4px 4px' }
-            }}>
+            <Box
+              sx={{
+                flex: 1,
+                position: "relative",
+                "& .monaco-editor": { borderRadius: "0 0 4px 4px" },
+              }}
+            >
               <MonacoEditor
                 height="100%"
                 defaultLanguage="html"
                 value={templateContent}
-                onChange={v => setTemplateContent(v || "")}
+                onChange={(v) => setTemplateContent(v || "")}
                 options={{
                   minimap: { enabled: false },
                   fontSize: 14,
-                  wordWrap: 'on',
+                  wordWrap: "on",
                   scrollBeyondLastLine: false,
                   automaticLayout: true,
                   formatOnPaste: true,
                   formatOnType: true,
                   padding: { top: 12 },
+                  quickSuggestions: true,
+                  autoClosingBrackets: "always",
+                  autoClosingQuotes: "always",
+                  autoIndent: "full",
+                  suggestOnTriggerCharacters: true,
                 }}
-                theme={theme.palette.mode === 'dark' ? 'vs-dark' : 'vs-light'}
+                theme={theme.palette.mode === "dark" ? "vs-dark" : "vs-light"}
               />
             </Box>
           </Box>
 
           {/* Preview Section */}
-          <Box sx={{ 
-            flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minHeight: 0 
-          }}>
-            <Box sx={{ 
-              px: 2, 
-              py: 1, 
-              backgroundColor: theme.palette.background.paper,
-              borderBottom: `1px solid ${theme.palette.divider}`
-            }}>
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+            }}
+          >
+            <Box
+              sx={{
+                px: 2,
+                py: 1,
+                backgroundColor: theme.palette.background.paper,
+                borderBottom: `1px solid ${theme.palette.divider}`,
+              }}
+            >
               <Typography variant="subtitle2" color="textSecondary">
                 LIVE PREVIEW
               </Typography>
@@ -208,43 +237,47 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({ open, onClose, templa
             <Box
               sx={{
                 flex: 1,
-                position: 'relative',
+                position: "relative",
                 backgroundColor: theme.palette.background.paper,
-                overflow: 'hidden',
-                p: 2
+                overflow: "hidden",
+                p: 2,
               }}
             >
               {isLoading ? (
-                <Box sx={{ 
-                  display: "flex", 
-                  justifyContent: "center", 
-                  alignItems: "center", 
-                  height: "100%",
-                  backgroundColor: theme.palette.background.default
-                }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                    backgroundColor: theme.palette.background.default,
+                  }}
+                >
                   <CircularProgress size={24} />
                 </Box>
               ) : previewContent ? (
                 <iframe
                   srcDoc={previewContent}
-                  style={{ 
-                    width: "100%", 
-                    height: "100%", 
-                    border: "none", 
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
                     borderRadius: 4,
-                    backgroundColor: theme.palette.background.paper
+                    backgroundColor: theme.palette.background.paper,
                   }}
                   title="Template Preview"
                   sandbox="allow-same-origin"
                 />
               ) : (
-                <Box sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  color: theme.palette.text.secondary
-                }}>
+                <Box
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: theme.palette.text.secondary,
+                  }}
+                >
                   <Typography variant="body2">
                     Compile template to see preview
                   </Typography>
