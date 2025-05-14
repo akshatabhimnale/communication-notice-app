@@ -30,7 +30,6 @@ export default function NoticeTypesList() {
   const [allNoticeTypes, setAllNoticeTypes] = useState<NoticeType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeoutOccurred, setTimeoutOccurred] = useState(false);
   const [search, setSearch] = useState("");
   const [paginationModel, setPaginationModel] = useState({
     page: 0, // DataGrid page is 0-based, API page is 1-based
@@ -48,21 +47,8 @@ export default function NoticeTypesList() {
   const { enqueueSnackbar } = useSnackbar();
 
   const loadNotices = useCallback(async () => {
-    const timeoutId: NodeJS.Timeout = setTimeout(() => {
-      if (loading) {
-        setTimeoutOccurred(true);
-        setLoading(false);
-        setError("Loading timed out. Please try again.");
-        enqueueSnackbar("Loading timed out. Please try again.", {
-          variant: "error",
-          autoHideDuration: 5000,
-        });
-      }
-    }, 5000); // 5-second timeout
-
+    setLoading(true);
     try {
-      setLoading(true);
-      setTimeoutOccurred(false);
       const data: PaginatedResponse = await fetchNoticeTypes(paginationModel.page + 1); // API page is 1-based
       if (!Array.isArray(data.results)) {
         throw new Error("Invalid data format. Expected an array in results.");
@@ -78,27 +64,13 @@ export default function NoticeTypesList() {
       setError(err instanceof Error ? err.message : "Failed to load notice types");
     } finally {
       setLoading(false);
-      clearTimeout(timeoutId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginationModel.page, enqueueSnackbar]);
 
   const loadAllNotices = useCallback(async () => {
-    const timeoutId: NodeJS.Timeout = setTimeout(() => {
-      if (loading) {
-        setTimeoutOccurred(true);
-        setLoading(false);
-        setError("Loading timed out. Please try again.");
-        enqueueSnackbar("Loading timed out. Please try again.", {
-          variant: "error",
-          autoHideDuration: 5000,
-        });
-      }
-    }, 5000); // 5-second timeout
-
+    setLoading(true);
     try {
-      setLoading(true);
-      setTimeoutOccurred(false);
       let allNotices: NoticeType[] = [];
       let page = 1;
       let hasNext = true;
@@ -126,10 +98,19 @@ export default function NoticeTypesList() {
       }
     } finally {
       setLoading(false);
-      clearTimeout(timeoutId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enqueueSnackbar]);
+
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    if (search) {
+      loadAllNotices();
+    } else {
+      loadNotices();
+    }
+  }, [search, loadAllNotices, loadNotices]);
 
   useEffect(() => {
     if (!search) {
@@ -207,15 +188,15 @@ export default function NoticeTypesList() {
     }
   };
 
-  if (loading && !timeoutOccurred) {
+  if (loading) {
     return <NoticeTypeSkeleton />;
   }
 
-  if (error || timeoutOccurred) {
+  if (error) {
     return (
       <Box sx={{ textAlign: "center", mt: 4 }}>
-        <Typography color="error">{error || "Failed to load notice types"}</Typography>
-        <Button variant="contained" onClick={search ? loadAllNotices : loadNotices} sx={{ mt: 2 }}>
+        <Typography color="error">{error}</Typography>
+        <Button variant="contained" onClick={handleRetry} sx={{ mt: 2 }}>
           Retry
         </Button>
       </Box>
