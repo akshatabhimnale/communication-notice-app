@@ -10,6 +10,8 @@ import {
   ApiSchemaField,
   ApiResponse,
   UploadSchemaResponse,
+  BulkUploadResponse,
+  TransformedNoticeType,
 } from "@/types/noticeTypesInterface";
 
 // Transform component's dynamic_schema to API's expected format
@@ -32,8 +34,9 @@ const transformDynamicSchemaForApi = (
 const transformDynamicSchema = (
   apiSchema: DynamicSchema
 ): Record<string, SchemaField> => {
+  console.log("Raw API Schema:", JSON.stringify(apiSchema, null, 2));
   const fields = apiSchema.fields || {};
-  return Object.entries(fields).reduce((acc, [key, field]) => {
+  const transformed = Object.entries(fields).reduce((acc, [key, field]) => {
     if (key.includes(",")) {
       const subFields = key.split(",").map((f) => f.trim());
       subFields.forEach((subField) => {
@@ -62,6 +65,8 @@ const transformDynamicSchema = (
     }
     return acc;
   }, {} as Record<string, SchemaField>);
+  console.log("Transformed Schema:", JSON.stringify(transformed, null, 2));
+  return transformed;
 };
 
 // Infer field type from CSV data sample
@@ -178,6 +183,21 @@ export const fetchNoticeTypes = async (
     }
     throw new Error("An unexpected error occurred");
   }
+};
+
+// Updated function to fetch notice types with transformed schemas
+export const fetchNoticeTypesWithTransformedSchemas = async (
+  page: number = 1
+): Promise<Omit<PaginatedResponse, 'results'> & { results: TransformedNoticeType[] }> => {
+  const response = await fetchNoticeTypes(page);
+  const transformedResults = response.results.map((noticeType) => ({
+    ...noticeType,
+    dynamic_schema: transformDynamicSchema(noticeType.dynamic_schema) as Record<string, SchemaField>,
+  }));
+  return {
+    ...response,
+    results: transformedResults,
+  };
 };
 
 export const fetchNoticeTypeById = async (id: string): Promise<NoticeType> => {
@@ -340,6 +360,155 @@ export const uploadSchemaFromCsv = async (
     return transformedSchema;
   } catch (err: unknown) {
     console.error("UploadSchemaFromCsv error:", err);
+    if (err instanceof AxiosError) {
+      console.error("Full error:", err.response?.data, err.config);
+      if (err.response?.status === 401) {
+        clearTokenCookie();
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
+      }
+      throw new Error(
+        err.response
+          ? `API Error ${err.response.status}: ${JSON.stringify(
+              err.response.data
+            )}`
+          : "Network Error: Unable to reach the server"
+      );
+    }
+    throw new Error(
+      err instanceof Error ? err.message : "An unexpected error occurred"
+    );
+  }
+};
+
+// Validate CSV headers against notice type's dynamic_schema
+const validateCsvHeaders = (
+  headers: string[],
+  dynamicSchema: Record<string, SchemaField>
+): { isValid: boolean; missingFields: string[]; extraFields: string[] } => {
+  const schemaFields = Object.keys(dynamicSchema);
+  const lowerCaseSchemaFields = schemaFields.map((field) => field.toLowerCase());
+  const lowerCaseHeaders = headers.map((header) => header.toLowerCase());
+
+  const missingFields = schemaFields.filter(
+    (field) =>
+      dynamicSchema[field].required &&
+      !lowerCaseHeaders.includes(field.toLowerCase())
+  );
+  const extraFields = headers.filter(
+    (header) => !lowerCaseSchemaFields.includes(header.toLowerCase())
+  );
+
+  console.log("CSV Headers:", headers);
+  console.log("Dynamic Schema:", JSON.stringify(dynamicSchema, null, 2));
+  console.log("Schema Fields:", schemaFields);
+  console.log("Missing Required Fields:", missingFields);
+  console.log("Extra Fields:", extraFields);
+
+  return {
+    isValid: missingFields.length === 0 && extraFields.length === 0,
+    missingFields,
+    extraFields,
+  };
+};
+
+export const bulkCreateNotices = async (
+  file: File,
+  noticeTypeId: string,
+  createdBy: string,
+  noticeTypeSchema: Record<string, SchemaField>
+): Promise<BulkUploadResponse> => {
+  const token = getTokenFromCookie();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in.");
+  }
+
+  console.log("Input Notice Type Schema:", JSON.stringify(noticeTypeSchema, null, 2));
+
+  try {
+    // Read CSV file
+    const text = await file.text();
+    const lines = text.split("\n").filter((line) => line.trim());
+    if (lines.length < 2) {
+      throw new Error("CSV is empty or has no data rows");
+    }
+
+    const headers = lines[0]
+      .split(",")
+      .map((h) => h.trim().replace(/^"|"$/g, ""));
+    if (headers.some((h) => !h || h.includes(","))) {
+      throw new Error("Invalid CSV headers: Empty or contain commas");
+    }
+
+    // Validate CSV headers against notice type schema
+    const { isValid, missingFields, extraFields } = validateCsvHeaders(
+      headers,
+      noticeTypeSchema
+    );
+    if (!isValid) {
+      throw new Error(
+        `CSV headers do not match notice type schema. Missing required fields: ${missingFields.join(
+          ", "
+        )}. Extra fields: ${extraFields.join(", ")}`
+      );
+    }
+
+    const createdNotices: Notice[] = [];
+    const failedRows: Array<{ row: number; error: string }> = [];
+
+    // Process each row (skip header)
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i].split(",").map((v) => v.trim());
+      if (row.length !== headers.length) {
+        failedRows.push({ row: i + 1, error: "Invalid number of columns" });
+        continue;
+      }
+
+      // Build dynamic_data from row, mapping headers to schema fields (case-insensitive)
+      const dynamicData: Record<string, any> = {};
+      headers.forEach((header, index) => {
+        const schemaField = Object.keys(noticeTypeSchema).find(
+          (field) => field.toLowerCase() === header.toLowerCase()
+        );
+        if (schemaField) {
+          dynamicData[schemaField] = row[index]; // Use schema field name (e.g., "Title" instead of "title")
+        }
+      });
+
+      // Create notice payload
+      const payload = {
+        notice_type: noticeTypeId,
+        dynamic_data: dynamicData,
+        created_by: createdBy,
+        status: "active",
+        priority: "medium",
+      };
+
+      console.log(`Sending payload for row ${i + 1}:`, JSON.stringify(payload, null, 2));
+
+      try {
+        const response = await noticeApiClient.post<Notice>("/notices/", payload);
+        createdNotices.push(response.data);
+      } catch (err) {
+        const errorMessage =
+          err instanceof AxiosError
+            ? `API Error ${err.response?.status}: ${JSON.stringify(err.response?.data)}`
+            : "Unexpected error";
+        failedRows.push({ row: i + 1, error: errorMessage });
+      }
+    }
+
+    return {
+      success: createdNotices.length > 0,
+      data: {
+        created: createdNotices,
+        failed: failedRows,
+      },
+      errors: failedRows.length > 0 ? { failedRows } : {},
+      meta: {},
+    };
+  } catch (err: unknown) {
     if (err instanceof AxiosError) {
       console.error("Full error:", err.response?.data, err.config);
       if (err.response?.status === 401) {
