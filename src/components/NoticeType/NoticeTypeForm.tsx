@@ -233,6 +233,10 @@ export const NoticeTypeForm = ({
         onClose={() => setOpenTemplateDialog(false)}
         onConfirm={handleTemplateConfirm}
         initialName={values.name}
+        dynamicFields={Object.entries(values.dynamic_schema).map(([field_name, value]) => ({
+          field_name,
+          label: value.label || field_name,
+        }))}
       />
     </Container>
   );
