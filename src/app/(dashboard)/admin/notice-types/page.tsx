@@ -22,7 +22,6 @@ import {
   MenuItem,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { useSnackbar } from "notistack";
 
 export default function NoticeTypesList() {
   const router = useRouter();
@@ -44,8 +43,6 @@ export default function NoticeTypesList() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedNotice, setSelectedNotice] = useState<NoticeType | null>(null);
 
-  const { enqueueSnackbar } = useSnackbar();
-
   const loadNotices = useCallback(async () => {
     setLoading(true);
     try {
@@ -65,8 +62,7 @@ export default function NoticeTypesList() {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paginationModel.page, enqueueSnackbar]);
+  }, [paginationModel.page]);
 
   const loadAllNotices = useCallback(async () => {
     setLoading(true);
@@ -99,8 +95,7 @@ export default function NoticeTypesList() {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enqueueSnackbar]);
+  }, []);
 
   const handleRetry = useCallback(() => {
     setError(null);
@@ -173,17 +168,8 @@ export default function NoticeTypesList() {
       setAllNoticeTypes((prev) => prev.filter((n) => n.id !== noticeToDelete.id));
       setTotalRows((prev) => prev - 1);
       handleDeleteClose();
-      enqueueSnackbar("Notice type deleted successfully", {
-        variant: "success",
-        autoHideDuration: 3000,
-      });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to delete notice type";
-      setDeleteError(errorMessage);
-      enqueueSnackbar(errorMessage, {
-        variant: "error",
-        autoHideDuration: 3000,
-      });
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete notice type");
       setDeleting(false);
     }
   };
@@ -331,8 +317,8 @@ export default function NoticeTypesList() {
             <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
             <DialogContent>
               <DialogContentText>
-                Are you sure you want to delete the notice type{" "}
-                <strong>{noticeToDelete?.name}</strong>? This action cannot be undone.
+                Are you sure you want to delete the notice type &quot;{noticeToDelete?.name}&quot;?
+                This action cannot be undone.
               </DialogContentText>
               {deleteError && (
                 <Typography color="error" sx={{ mt: 2 }}>

@@ -188,7 +188,8 @@ export default function DynamicFieldBuilder({
       {fields.length === 0 ? (
         <Typography color="text.secondary">No fields added yet.</Typography>
       ) : (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+        
+        <Box sx={{ display: "flex",flexDirection:"row",gap: 1,flexWrap: "nowrap",overflowX:"scroll" }}>
           {fields.map((field, index) => (
             <Chip
               key={index}
@@ -205,8 +206,6 @@ export default function DynamicFieldBuilder({
         </Box>
       )}
 
-      
-
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{editIndex !== null ? "Edit Field" : "Add New Field"}</DialogTitle>
         <DialogContent>
@@ -219,6 +218,7 @@ export default function DynamicFieldBuilder({
               error={!!errors.field_name}
               helperText={errors.field_name || "Unique code (e.g., due_date)"}
               size="small"
+              autoFocus
             />
             <TextField
               label="Label"
