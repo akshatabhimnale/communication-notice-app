@@ -97,6 +97,16 @@ export default function NoticeTypesList() {
     }
   }, []);
 
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    if (search) {
+      loadAllNotices();
+    } else {
+      loadNotices();
+    }
+  }, [search, loadAllNotices, loadNotices]);
+
   useEffect(() => {
     if (!search) {
       if (noticeTypes.length === 0 || paginationModel.page !== 0) {
@@ -177,7 +187,8 @@ export default function NoticeTypesList() {
     return (
       <Box sx={{ textAlign: "center", mt: 4 }}>
         <Typography color="error">{error}</Typography>
-        <Button variant="contained" onClick={search ? loadAllNotices : () => loadNotices(paginationModel.page)} sx={{ mt: 2 }}>
+
+        <Button variant="contained" onClick={handleRetry} sx={{ mt: 2 }}>
           Retry
         </Button>
       </Box>
