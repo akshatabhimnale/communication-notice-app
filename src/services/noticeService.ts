@@ -190,10 +190,17 @@ export const fetchNoticeTypesWithTransformedSchemas = async (
   page: number = 1
 ): Promise<Omit<PaginatedResponse, 'results'> & { results: TransformedNoticeType[] }> => {
   const response = await fetchNoticeTypes(page);
-  const transformedResults = response.results.map((noticeType) => ({
-    ...noticeType,
-    dynamic_schema: transformDynamicSchema(noticeType.dynamic_schema) as Record<string, SchemaField>,
-  }));
+  const transformedResults = response.results.map((noticeType) => {
+    // Create a DynamicSchema object to match what transformDynamicSchema expects
+    const dynamicSchemaForTransform: DynamicSchema = {
+      fields: noticeType.dynamic_schema as unknown as Record<string, { type: string; label: string; required: boolean }>
+    };
+    
+    return {
+      ...noticeType,
+      dynamic_schema: transformDynamicSchema(dynamicSchemaForTransform),
+    };
+  });
   return {
     ...response,
     results: transformedResults,
@@ -466,7 +473,7 @@ export const bulkCreateNotices = async (
       }
 
       // Build dynamic_data from row, mapping headers to schema fields (case-insensitive)
-      const dynamicData: Record<string, any> = {};
+      const dynamicData: Record<string, unknown> = {};
       headers.forEach((header, index) => {
         const schemaField = Object.keys(noticeTypeSchema).find(
           (field) => field.toLowerCase() === header.toLowerCase()
