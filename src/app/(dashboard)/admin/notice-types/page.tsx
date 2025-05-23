@@ -97,6 +97,16 @@ export default function NoticeTypesList() {
     }
   }, []);
 
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    if (search) {
+      loadAllNotices();
+    } else {
+      loadNotices();
+    }
+  }, [search, loadAllNotices, loadNotices]);
+
   useEffect(() => {
     if (!search) {
       loadNotices();
@@ -172,7 +182,7 @@ export default function NoticeTypesList() {
     return (
       <Box sx={{ textAlign: "center", mt: 4 }}>
         <Typography color="error">{error}</Typography>
-        <Button variant="contained" onClick={search ? loadAllNotices : loadNotices} sx={{ mt: 2 }}>
+        <Button variant="contained" onClick={handleRetry} sx={{ mt: 2 }}>
           Retry
         </Button>
       </Box>
