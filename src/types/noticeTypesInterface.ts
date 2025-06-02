@@ -32,6 +32,7 @@ export interface NoticeType {
   description: string | null;
   dynamic_schema: Record<string, SchemaField>;
   created_at: string;
+  assigned_to: string | null;
 }
 
 export interface PaginatedResponse {
@@ -54,6 +55,7 @@ export interface ApiNoticeType {
   description: string | null;
   dynamic_schema: DynamicSchema;
   created_at: string;
+  assigned_to: string | null;
 }
 
 export interface ApiResponse {
@@ -94,6 +96,7 @@ export interface NoticeTypeFormValues {
   description: string | null;
   dynamic_schema: Record<string, SchemaField>;
   org_id: string;
+  assigned_to: string | null;
 }
 
 export interface NoticeTypeFormProps {
@@ -108,7 +111,6 @@ export interface NoticeTypeFormProps {
   isLoading?: boolean;
 }
 
-
 export interface TransformedNoticeType {
   id: string;
   org_id: string;
@@ -116,4 +118,5 @@ export interface TransformedNoticeType {
   description: string | null;
   dynamic_schema: Record<string, SchemaField>;
   created_at: string;
+  assigned_to: string | null;
 }

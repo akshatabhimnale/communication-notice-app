@@ -27,13 +27,12 @@ export default function NoticeTypesList() {
   const router = useRouter();
   const [noticeTypes, setNoticeTypes] = useState<NoticeType[]>([]);
   const [allNoticeTypes, setAllNoticeTypes] = useState<NoticeType[]>([]);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [paginationModel, setPaginationModel] = useState({
-    page: 0,
-    pageSize: 10,
+    page: 0, // DataGrid page is 0-based, API page is 1-based
+    pageSize: 10, // API returns 10 items per page
   });
   const [totalRows, setTotalRows] = useState(0);
   const [hasFetchedAll, setHasFetchedAll] = useState(false);
@@ -44,9 +43,10 @@ export default function NoticeTypesList() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedNotice, setSelectedNotice] = useState<NoticeType | null>(null);
 
-  const loadNotices = useCallback(async (page: number) => {
+  const loadNotices = useCallback(async () => {
+    setLoading(true);
     try {
-      const data: PaginatedResponse = await fetchNoticeTypes(page + 1);
+      const data: PaginatedResponse = await fetchNoticeTypes(paginationModel.page + 1); // API page is 1-based
       if (!Array.isArray(data.results)) {
         throw new Error("Invalid data format. Expected an array in results.");
       }
@@ -60,12 +60,12 @@ export default function NoticeTypesList() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load notice types");
     } finally {
-      setInitialLoading(false);
+      setLoading(false);
     }
-  }, []);
+  }, [paginationModel.page]);
 
   const loadAllNotices = useCallback(async () => {
-    setSearchLoading(true);
+    setLoading(true);
     try {
       let allNotices: NoticeType[] = [];
       let page = 1;
@@ -93,30 +93,15 @@ export default function NoticeTypesList() {
         setError("Failed to load all notice types: An unexpected error occurred");
       }
     } finally {
-      setSearchLoading(false);
+      setLoading(false);
     }
   }, []);
 
-  const handleRetry = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    if (search) {
-      loadAllNotices();
-    } else {
-      loadNotices();
-    }
-  }, [search, loadAllNotices, loadNotices]);
-
   useEffect(() => {
     if (!search) {
-      if (noticeTypes.length === 0 || paginationModel.page !== 0) {
-        setInitialLoading(true); // Only set if no data or page changed
-        loadNotices(paginationModel.page);
-      } else {
-        setInitialLoading(false); // Avoid skeleton if data exists
-      }
+      loadNotices();
     }
-  }, [loadNotices, search, paginationModel.page, noticeTypes.length]);
+  }, [loadNotices, search]);
 
   useEffect(() => {
     if (search && !hasFetchedAll) {
@@ -136,7 +121,7 @@ export default function NoticeTypesList() {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    setPaginationModel((prev) => ({ ...prev, page: 0 }));
+    setPaginationModel((prev) => ({ ...prev, page: 0 })); // Reset to first page for search results
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, notice: NoticeType) => {
@@ -179,7 +164,7 @@ export default function NoticeTypesList() {
     }
   };
 
-  if (initialLoading) {
+  if (loading) {
     return <NoticeTypeSkeleton />;
   }
 
@@ -187,8 +172,7 @@ export default function NoticeTypesList() {
     return (
       <Box sx={{ textAlign: "center", mt: 4 }}>
         <Typography color="error">{error}</Typography>
-
-        <Button variant="contained" onClick={handleRetry} sx={{ mt: 2 }}>
+        <Button variant="contained" onClick={search ? loadAllNotices : loadNotices} sx={{ mt: 2 }}>
           Retry
         </Button>
       </Box>
@@ -196,7 +180,7 @@ export default function NoticeTypesList() {
   }
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", position: "relative" }}>
+    <Box sx={{ maxWidth: 1200, mx: "auto" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <TextField
           label="Search by Name"
@@ -219,26 +203,7 @@ export default function NoticeTypesList() {
           No notice types available
         </Typography>
       ) : (
-        <Box sx={{ position: "relative" }}>
-          {searchLoading && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(255, 255, 255, 0.7)",
-                zIndex: 1,
-              }}
-            >
-              <CircularProgress />
-              <Typography sx={{ ml: 2 }}>Loading search results...</Typography>
-            </Box>
-          )}
+        <>
           <DataGrid
             rows={search ? filteredNoticeTypes : noticeTypes}
             columns={[
@@ -324,14 +289,13 @@ export default function NoticeTypesList() {
             paginationMode={search ? "client" : "server"}
             paginationModel={paginationModel}
             onPaginationModelChange={handlePaginationModelChange}
-            pageSizeOptions={[10]}
+            pageSizeOptions={[10]} // API fixed at 10 items per page
             disableRowSelectionOnClick
             autoHeight
             getRowId={(row) => row.id}
             sx={{
               "& .MuiDataGrid-columnHeaders": { backgroundColor: "#f5f5f5" },
               "& .MuiDataGrid-cell": { py: 1 },
-              opacity: searchLoading ? 0.5 : 1, // Slight fade during loading
             }}
           />
           <Dialog
@@ -366,7 +330,7 @@ export default function NoticeTypesList() {
               </Button>
             </DialogActions>
           </Dialog>
-        </Box>
+        </>
       )}
     </Box>
   );
