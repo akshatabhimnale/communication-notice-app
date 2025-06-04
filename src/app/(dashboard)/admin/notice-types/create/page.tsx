@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { NoticeTypeForm } from "@/components/NoticeType/NoticeTypeForm";
 import { createNoticeType } from "@/services/noticeService";
 import { createTemplate } from "@/services/TemplateService";
-import { fetchUserProfile, fetchUsers } from "@/services/userService";
+import { fetchUserProfile, fetchAllUsers } from "@/services/userService";
 import { Container, CircularProgress, Typography, Button } from "@mui/material";
 import { NoticeTypeFormValues } from "@/types/noticeTypesInterface";
 import { NoticeTypeFormSkeleton } from "@/components/NoticeType/NoticeTypeFormSkeleton";
@@ -41,13 +41,13 @@ export default function CreateNoticeType() {
   }, []);
 
   const fetchUserList = useCallback(async () => {
-    console.log("Fetching user list...");
+    console.log("Fetching all users...");
     setIsLoadingUsers(true);
     setError(null);
     try {
-      const response = await fetchUsers();
-      setUsers(response.results);
-      console.log("User list fetched successfully:", response.results);
+      const allUsers = await fetchAllUsers();
+      setUsers(allUsers);
+      console.log("All users fetched successfully:", allUsers);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load user list.";
       console.error("Error fetching users:", err);
@@ -94,23 +94,25 @@ export default function CreateNoticeType() {
         await createTemplate(templatePayload);
         console.log("handleSubmit: Template created successfully for notice type:", createdNoticeType.id);
       } else {
-        console.log("handleSubmit: No valid template data provided, skipping template creation.");
+        console.log("handleSubmit: No valid template data provided.");
       }
 
       console.log("handleSubmit: Process successful. Redirecting to /admin/notice-types");
-      router.push("/admin/notice-types");
+      router.push("/items/all");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "An unexpected error occurred during creation.";
-      console.error("handleSubmit: Error creating notice type or template:", err);
-      setError(`Failed to create: ${message}`);
+      const message = err.message || "An unexpected error occurred during creation.";
+      console.error("Error creating notice type or template:", err);
+      setError("Failed to create: ${err.message}");
     }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "An unexpected error occurred during creation.";
+    console.error("Error creating notice type or template:", err);
+    setError(`Failed to create: ${message}`);
   };
 
-  const handleRetryFetch = () => {
+  const handleRetry = () => {
     fetchOrganizationId();
     fetchUserList();
-  };
-
   if (error && (!orgId || users.length === 0)) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>

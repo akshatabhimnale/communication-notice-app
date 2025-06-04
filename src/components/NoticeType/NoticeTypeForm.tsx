@@ -17,9 +17,11 @@ import TemplateSetupDialog from "../templates/TemplateSetupDialog";
 import { NoticeTypeFormProps, NoticeTypeFormValues } from "@/types/noticeTypesInterface";
 import { AppWindow } from "lucide-react";
 import { User } from "@/services/userService";
+import { template } from "@/services/TemplateService";
 
 interface ExtendedNoticeTypeFormProps extends NoticeTypeFormProps {
   users: User[];
+  templates: template[];
 }
 
 export const NoticeTypeForm = ({
@@ -36,6 +38,7 @@ export const NoticeTypeForm = ({
   orgId,
   isLoading = false,
   users,
+  templates,
 }: ExtendedNoticeTypeFormProps) => {
   const [values, setValues] = useState<NoticeTypeFormValues>({
     ...initialValues,
@@ -45,14 +48,15 @@ export const NoticeTypeForm = ({
     dynamic_schema: initialValues?.dynamic_schema || {},
     assigned_to: initialValues?.assigned_to || null,
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openTemplateDialog, setOpenTemplateDialog] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<template | null>(null);
   const [templateData, setTemplateData] = useState<{
     name: string;
     channel: string;
     template_content: string;
+    id?: string;
   } | null>(null);
 
   const validateForm = (): boolean => {
@@ -122,8 +126,17 @@ export const NoticeTypeForm = ({
     channel: string;
     template_content: string;
   }) => {
-    setTemplateData(data);
+    setTemplateData({ ...data, id: selectedTemplate?.id });
     setOpenTemplateDialog(false);
+    setSelectedTemplate(null);
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    const template = templates.find((t) => t.id === templateId);
+    if (template) {
+      setSelectedTemplate(template);
+      setOpenTemplateDialog(true);
+    }
   };
 
   if (isLoading) {
@@ -137,7 +150,7 @@ export const NoticeTypeForm = ({
       </Typography>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 3, justifyContent: "center" }}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
           <TextField
             label="Name"
             role="NoticeName"
@@ -153,16 +166,40 @@ export const NoticeTypeForm = ({
           />
           <Button
             variant="contained"
-            onClick={() => setOpenTemplateDialog(true)}
+            onClick={() => {
+              setSelectedTemplate(null);
+              setOpenTemplateDialog(true);
+            }}
             disabled={isSubmitting}
-            sx={{ width: '32ch', textTransform: "none" }}
+            sx={{ width: "32ch", textTransform: "none" }}
             color="primary"
             size="large"
             role="Setup_btn"
             startIcon={<AppWindow />}
           >
-            Setup Common Template
+            Create New Template
           </Button>
+          {templates.length > 0 && (
+            <FormControl sx={{ width: "32ch" }}>
+              <InputLabel id="template-select-label">Select Template to Edit</InputLabel>
+              <Select
+                labelId="template-select-label"
+                label="Select Template to Edit"
+                value=""
+                onChange={(e) => handleTemplateSelect(e.target.value)}
+                disabled={isSubmitting}
+              >
+                <MenuItem value="">
+                  <em>Select a template</em>
+                </MenuItem>
+                {templates.map((template) => (
+                  <MenuItem key={template.id} value={template.id}>
+                    {`${template.channel} Template (${template.updated_at ? new Date(template.updated_at).toLocaleString() : "N/A"})`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
         </Box>
 
         <FormControl variant="outlined" sx={{ width: "70%" }} error={!!errors.assigned_to}>
@@ -259,13 +296,21 @@ export const NoticeTypeForm = ({
 
       <TemplateSetupDialog
         open={openTemplateDialog}
-        onClose={() => setOpenTemplateDialog(false)}
+        onClose={() => {
+          setOpenTemplateDialog(false);
+          setSelectedTemplate(null);
+        }}
         onConfirm={handleTemplateConfirm}
-        initialName={values.name}
+        initialName={selectedTemplate?.channel || values.name}
         dynamicFields={Object.entries(values.dynamic_schema).map(([field_name, value]) => ({
           field_name,
           label: value.label || field_name,
         }))}
+        initialTemplate={
+          selectedTemplate
+            ? { channel: selectedTemplate.channel, template_content: selectedTemplate.template_content }
+            : undefined
+        }
       />
     </Container>
   );

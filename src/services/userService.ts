@@ -157,16 +157,16 @@ export const updateCurrentUserProfile = async (
  * @returns A promise that resolves to a PaginatedUserResponse object containing the list of users and pagination details.
  * @throws Will throw an error if the API request fails, after logging the error to the console.
  */
-export const fetchUsers = async (url?: string): Promise<PaginatedUserResponse> => {
-  try {
-    const endpoint = url || '/users/';
-    const response = await userApiClient.get<PaginatedUserResponse>(endpoint);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    throw error;
-  }
-};
+// export const fetchUsers = async (url?: string): Promise<PaginatedUserResponse> => {
+//   try {
+//     const endpoint = url || '/users/';
+//     const response = await userApiClient.get<PaginatedUserResponse>(endpoint);
+//     return response.data;
+//   } catch (error) {
+//     console.error("Error fetching users:", error);
+//     throw error;
+//   }
+// };
 
 /**
  * Edits an existing user by their ID.
@@ -214,5 +214,64 @@ export const deleteUser = async (id: string): Promise<void> => {
     }
     
     throw error;
+  }
+};
+
+
+// export const fetchUserProfile = async (): Promise<UserProfile> => {
+//   try {
+//     const response = await userApiClient.get<UserProfile>("/profile/");
+//     return response.data;
+//   } catch (err: unknown) {
+//     if (err instanceof AxiosError) {
+//       console.error("Error fetching user profile:", err.response?.data, err.config);
+//       if (err.response?.status === 401) {
+//         throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+//       }
+//       throw err; // Let the interceptor handle the error formatting
+//     }
+//     throw new Error("An unexpected error occurred while fetching user profile.");
+//   }
+// };
+
+export const fetchUsers = async (url: string = "/users/"): Promise<PaginatedUserResponse> => {
+  try {
+    const response = await userApiClient.get<PaginatedUserResponse>(url);
+    return response.data;
+  } catch (err: unknown) {
+    if (err instanceof AxiosError) {
+      console.error("Error fetching users:", err.response?.data, err.config);
+      if (err.response?.status === 401) {
+        throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+      }
+      throw err;
+    }
+    throw new Error("An unexpected error occurred while fetching users.");
+  }
+};
+
+export const fetchAllUsers = async (): Promise<User[]> => {
+  console.log("Fetching all users...");
+  try {
+    let allUsers: User[] = [];
+    let nextUrl: string | null = "/users/";
+
+    while (nextUrl) {
+      try {
+        const response: PaginatedUserResponse = await fetchUsers(nextUrl);
+        allUsers = [...allUsers, ...response.results];
+        nextUrl = response.next;
+        console.log(`Fetched ${response.results.length} users, total so far: ${allUsers.length}, next: ${nextUrl}`);
+      } catch (err) {
+        console.warn(`Failed to fetch users for URL ${nextUrl}:`, err);
+        throw new Error(`Failed to fetch users page: ${err instanceof Error ? err.message : "Unknown error"}`);
+      }
+    }
+
+    console.log("All users fetched successfully:", allUsers.length);
+    return allUsers;
+  } catch (err) {
+    console.error("Error fetching all users:", err);
+    throw err;
   }
 };
