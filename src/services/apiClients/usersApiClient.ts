@@ -11,7 +11,7 @@ interface StoreState {
 
 const userApiClient = axios.create({
   baseURL: API_URLS.USERS_SERVICE,
-  timeout: 10000, // Increased timeout to 10 seconds
+  timeout: 15000, // Increased to 15 seconds
   headers: {
     "Content-Type": "application/json",
   },
@@ -20,14 +20,20 @@ const userApiClient = axios.create({
 // Configure axios-retry
 axiosRetry(userApiClient, {
   retries: 3,
-  retryDelay: (retryCount) => retryCount * 1000, // Exponential backoff: 1s, 2s, 3s
+  retryDelay: (retryCount) => {
+    console.log(`Retry attempt ${retryCount + 1} for ${userApiClient.defaults.baseURL}`);
+    return retryCount * 2000; // 2s, 4s, 6s
+  },
   retryCondition: (error) => {
-    return (
+    const shouldRetry =
       error.code === "ERR_NETWORK" ||
       error.message.includes("timeout") ||
       error.response?.status === 429 ||
-      error.response?.status === 503
-    );
+      error.response?.status === 503;
+    if (shouldRetry) {
+      console.log(`Retrying due to error: ${error.message}`);
+    }
+    return shouldRetry;
   },
 });
 
@@ -43,6 +49,10 @@ export const setStoreAccessor = (storeGetState: () => StoreState) => {
 
 userApiClient.interceptors.request.use(
   (config) => {
+    // Normalize URL to prevent double-prefixing
+    if (config.url?.startsWith("http://") || config.url?.startsWith("https://")) {
+      config.url = new URL(config.url).pathname + (new URL(config.url).search || "");
+    }
     if (process.env.NODE_ENV === "development") {
       console.log("Full request URL:", `${config.baseURL ?? ""}${config.url}`);
     }
@@ -71,9 +81,12 @@ userApiClient.interceptors.response.use(
       console.error("API Error:", status, data, error.config?.url);
     }
     if (axios.isAxiosError(error)) {
-      const status = error.response?.status || "No status";
-      const data = error.response?.data || "No response data";
-      return Promise.reject(new Error(`API Error ${status}: ${JSON.stringify(data)}`));
+      if (error.response) {
+        return Promise.reject(
+          new Error(`API Error ${error.response.status}: ${JSON.stringify(error.response.data)}`)
+        );
+      }
+      return Promise.reject(new Error(`Network Error: ${error.message}`));
     }
     return Promise.reject(new Error(`Non-Axios Error: ${error.message || "Unknown error"}`));
   }

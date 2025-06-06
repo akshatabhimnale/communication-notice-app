@@ -94,30 +94,32 @@ export default function CreateNoticeType() {
         await createTemplate(templatePayload);
         console.log("handleSubmit: Template created successfully for notice type:", createdNoticeType.id);
       } else {
-        console.log("handleSubmit: No valid template data provided.");
+        console.log("handleSubmit: No valid template data provided, skipping template creation.");
       }
 
       console.log("handleSubmit: Process successful. Redirecting to /admin/notice-types");
-      router.push("/items/all");
+      router.push("/admin/notice-types");
     } catch (err) {
-      const message = err.message || "An unexpected error occurred during creation.";
+      const message = err instanceof Error ? err.message : "An unexpected error occurred during creation.";
       console.error("Error creating notice type or template:", err);
-      setError("Failed to create: ${err.message}");
+      setError(`Failed to create: ${message}`);
     }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "An unexpected error occurred during creation.";
-    console.error("Error creating notice type or template:", err);
-    setError(`Failed to create: ${message}`);
   };
 
-  const handleRetry = () => {
+  const handleRetryFetch = () => {
     fetchOrganizationId();
     fetchUserList();
-  if (error && (!orgId || users.length === 0)) {
+  };
+
+  if (isLoadingOrg) {
+    return <NoticeTypeFormSkeleton />;
+  }
+
+  if (error && !orgId) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography color="error" gutterBottom>
-          Error loading required data: {error}
+          Error loading organization: {error}
         </Typography>
         <Button
           variant="contained"
@@ -131,16 +133,12 @@ export default function CreateNoticeType() {
     );
   }
 
-  if (isLoadingOrg || isLoadingUsers) {
-    return <NoticeTypeFormSkeleton />;
-  }
-
-  if (orgId && users.length > 0) {
+  if (orgId) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         {error && (
           <Typography color="error" gutterBottom sx={{ mb: 2 }}>
-            {error}
+            {error} {users.length === 0 ? "(User list unavailable, but you can still create the notice type)" : ""}
           </Typography>
         )}
         <NoticeTypeForm
@@ -148,8 +146,7 @@ export default function CreateNoticeType() {
           onCancel={() => router.push("/admin/notice-types")}
           mode="create"
           orgId={orgId}
-          users={users}
-        />
+          users={users} templates={[]}        />
       </Container>
     );
   }
@@ -157,7 +154,7 @@ export default function CreateNoticeType() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography color="error">
-        Unable to load the form. Organization ID or user list might be missing.
+        Unable to load the form. Organization ID might be missing.
       </Typography>
     </Container>
   );
