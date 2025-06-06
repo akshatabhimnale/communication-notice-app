@@ -50,7 +50,6 @@ export default function EditNoticeType() {
   const fetchUserList = useCallback(async () => {
     console.log("Fetching all users...");
     setIsLoadingUsers(true);
-    setError(null);
     try {
       const allUsers = await fetchAllUsers();
       setUsers(allUsers);
@@ -69,7 +68,6 @@ export default function EditNoticeType() {
     if (!id || typeof id !== "string") return;
     console.log("Fetching templates for notice type:", id);
     setIsLoadingTemplates(true);
-    setError(null);
     try {
       let allTemplates: template[] = [];
       let nextUrl: string | null = `/templates/?notice_type=${id}`;
@@ -150,11 +148,15 @@ export default function EditNoticeType() {
     fetchNoticeTypeTemplates();
   };
 
-  if (error && (!initialData || users.length === 0 || isLoadingTemplates)) {
+  if (isLoadingNoticeType || isLoadingTemplates) {
+    return <NoticeTypeFormSkeleton />;
+  }
+
+  if (error && !initialData) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography color="error" gutterBottom>
-          Error loading required data: {error}
+          Error loading notice type: {error}
         </Typography>
         <Button
           variant="contained"
@@ -168,16 +170,12 @@ export default function EditNoticeType() {
     );
   }
 
-  if (isLoadingNoticeType || isLoadingUsers || isLoadingTemplates) {
-    return <NoticeTypeFormSkeleton />;
-  }
-
-  if (initialData && users.length > 0) {
+  if (initialData) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         {error && (
           <Typography color="error" gutterBottom sx={{ mb: 2 }}>
-            {error}
+            {error} {users.length === 0 ? "(User list unavailable, but you can still edit the notice type and templates)" : ""}
           </Typography>
         )}
         <NoticeTypeForm
@@ -196,7 +194,7 @@ export default function EditNoticeType() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography color="error">
-        Unable to load the form. Notice type, organization ID, or user list might be missing.
+        Unable to load the form. Notice type or organization ID might be missing.
       </Typography>
     </Container>
   );
