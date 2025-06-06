@@ -537,3 +537,133 @@ export const bulkCreateNotices = async (
     );
   }
 };
+
+// New bulk upload API service - Step 1: Upload file and get dynamic data
+export const bulkUploadFile = async (
+  file: File,
+  noticeTypeId: string
+): Promise<{
+  success: boolean;
+  data: Array<{
+    dynamic_data: Array<Record<string, unknown>>;
+  }>;
+  errors: Record<string, unknown>;
+  meta: Record<string, unknown>;
+}> => {
+  const token = getTokenFromCookie();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in.");
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("notice_type_id", noticeTypeId);
+
+    const response = await noticeApiClient.post(
+      "/notices/bulk-upload/",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      }
+    );
+
+    return response.data;
+  } catch (err: unknown) {
+    if (err instanceof AxiosError) {
+      console.error("Bulk upload error:", err.response?.data, err.config);
+      if (err.response?.status === 401) {
+        clearTokenCookie();
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
+      }
+      throw new Error(
+        err.response
+          ? `API Error ${err.response.status}: ${JSON.stringify(
+              err.response.data
+            )}`
+          : "Network Error: Unable to reach the server"
+      );
+    }
+    throw new Error("An unexpected error occurred during bulk upload");
+  }
+};
+
+// New individual notice creation - Step 2: Create notices one by one
+
+export const createIndividualNotice = async (
+  noticeTypeId: string,
+  dynamicData: Record<string, unknown>,
+  createdBy: string
+): Promise<Notice> => {
+  const token = getTokenFromCookie();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in.");
+  }
+
+  // Debug: Log the raw dynamic data
+  console.log("Creating notice with dynamic_data:", dynamicData);
+  console.log("Notice type ID:", noticeTypeId);
+  console.log("Created by:", createdBy);
+
+  // Clean and validate dynamic_data to ensure only primitive types
+  const cleanDynamicData: Record<string, string | number | boolean> = {};
+  
+  for (const [key, value] of Object.entries(dynamicData)) {
+    if (value === null || value === undefined) {
+      cleanDynamicData[key] = "";
+    } else if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      cleanDynamicData[key] = value;
+    } else {
+      // Convert any complex types to string
+      cleanDynamicData[key] = String(value);
+    }
+  }
+  
+  console.log("Cleaned dynamic_data:", cleanDynamicData);
+  
+  // Ensure the dynamic_data is a plain object without any nested structures
+  const payload = {
+    notice_type: noticeTypeId,
+    dynamic_data: cleanDynamicData,
+    created_by: createdBy,
+    status: "active",
+    priority: "medium",
+  };
+
+  // Debug: Log the final payload
+  console.log("Final payload being sent:", JSON.stringify(payload, null, 2));
+  
+  try {
+    // Remove explicit Content-Type header - let the API client handle it
+    const response = await noticeApiClient.post<Notice>("/notices/", payload);
+    return response.data;
+  } catch (err: unknown) {
+    if (err instanceof AxiosError) {
+      console.error("Create notice error:", err.response?.data, err.config);
+      console.error("Error response details:", {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        headers: err.config?.headers,
+      });
+      
+      if (err.response?.status === 401) {
+        clearTokenCookie();
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
+      }
+      
+      // Extract error message from response
+      const errorMessage = err.response?.data?.detail || 
+                          err.response?.data?.message ||
+                          err.response?.data?.error ||
+                          `API Error ${err.response?.status}`;
+      
+      throw new Error(errorMessage);
+    }
+    throw new Error("An unexpected error occurred while creating notice");
+  }
+};

@@ -96,16 +96,14 @@ export default function NoticeTypesList() {
       setSearchLoading(false);
     }
   }, []);
-
   const handleRetry = useCallback(() => {
     setError(null);
-    setLoading(true);
     if (search) {
       loadAllNotices();
     } else {
-      loadNotices();
+      loadNotices(paginationModel.page);
     }
-  }, [search, loadAllNotices, loadNotices]);
+  }, [search, loadAllNotices, loadNotices, paginationModel.page]);
 
   useEffect(() => {
     if (!search) {

@@ -1,9 +1,6 @@
-// BulkUpload.tsx
 "use client";
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   Box,
   Button,
   CircularProgress,
@@ -18,16 +15,17 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  bulkCreateNotices,
+  bulkUploadFile,
+  createIndividualNotice,
   fetchNoticeTypesWithTransformedSchemas,
-  uploadSchemaFromCsv,
 } from "@/services/noticeService";
-import { fetchUserProfile } from "@/services/userService";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchUsersThunk } from "@/store/slices/usersSlice";
 import {
   PaginatedResponse,
   TransformedNoticeType,
 } from "@/types/noticeTypesInterface";
-
+import { useSnackbar } from "notistack";
 // ---------- helpers ---------------------------------------------------------
 
 type FileValidation =
@@ -62,8 +60,6 @@ const validateFile = (file?: File | null): FileValidation => {
   return { ok: true, file };
 };
 
-const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
-
 /**
  * Consolidates every side-effect (network, retry, pagination)
  * in one object so UI remains declarative.
@@ -83,34 +79,7 @@ const controller = {
     } while (next);
     return all;
   },
-
-  async getUserId(retries = 3, delay = 1000): Promise<string> {
-    for (let attempt = 1; attempt <= retries; attempt += 1) {
-      try {
-        const profile = await fetchUserProfile();
-        return profile.id;
-      } catch (error) {
-        if (attempt === retries) throw error;
-        await sleep(delay);
-      }
-    }
-    // never reached, keeps TypeScript happy
-    throw new Error("Unreachable");
-  },
 };
-
-// ---------- ui helpers ------------------------------------------------------
-
-interface BannerProps {
-  severity: "error" | "success";
-  message: string;
-}
-
-const Banner: React.FC<BannerProps> = ({ severity, message }) => (
-  <Alert severity={severity} sx={{ mb: 2 }}>
-    {message}
-  </Alert>
-);
 
 // ---------- component -------------------------------------------------------
 
@@ -118,44 +87,37 @@ const BulkUpload: React.FC = () => {
   const [noticeTypes, setNoticeTypes] = useState<TransformedNoticeType[]>([]);
   const [selectedNoticeType, setSelectedNoticeType] = useState("");
   const [validatedFile, setValidatedFile] = useState<File | null>(null);
-
-  const [successMsg, setSuccessMsg] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState("");
 
-  // ---------- side-effects --------------------------------------------------
+  const dispatch = useAppDispatch();
+  const users = useAppSelector((state) => state.users.users);
+  const usersLoading = useAppSelector((state) => state.users.loading);
+  const { enqueueSnackbar } = useSnackbar();
 
+  // ---------- side-effects --------------------------------------------------
   useEffect(() => {
     controller
       .getNoticeTypes()
       .then(setNoticeTypes)
-      .catch(() =>
-        setErrorMsg("Unable to fetch notice types. Please try again later."),
+      .catch(() => 
+        enqueueSnackbar("Unable to fetch notice types. Please try again later.", {
+          variant: "error",
+        })
       );
 
-    controller
-      .getUserId()
-      .then(setUserId)
-      .catch(() =>
-        setErrorMsg(
-          "Unable to fetch user profile after multiple attempts. Check your network connection and retry.",
-        ),
-      );
-  }, []);
+    dispatch(fetchUsersThunk(undefined));
+  }, [dispatch, enqueueSnackbar]);
 
   // ---------- handlers ------------------------------------------------------
-
   const resetForm = useCallback(() => {
     setSelectedNoticeType("");
+    setUserId("");
     setValidatedFile(null);
-    setSuccessMsg("");
-    setErrorMsg("");
     // Clear the hidden input
     const input = document.getElementById("file-upload") as HTMLInputElement;
     if (input) input.value = "";
   }, []);
-
   const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ): Promise<void> => {
@@ -163,91 +125,97 @@ const BulkUpload: React.FC = () => {
 
     const validation = validateFile(file);
     if (!validation.ok) {
-      setErrorMsg(validation.error);
+      enqueueSnackbar(validation.error, { variant: "error" });
       setValidatedFile(null);
       return;
     }
 
-    try {
-      const schema = await uploadSchemaFromCsv(validation.file);
-      if (!schema || Object.keys(schema).length === 0) {
-        setErrorMsg("The file headers do not match any recognised schema.");
-        setValidatedFile(null);
-        return;
-      }
-      setValidatedFile(validation.file);
-      setErrorMsg("");
-    } catch {
-      setErrorMsg(
-        "File-schema validation failed. Ensure the CSV / Excel file has the correct headers.",
-      );
-      setValidatedFile(null);
-    }
+    setValidatedFile(validation.file);
   };
-
   const handleNoticeTypeChange = (e: SelectChangeEvent<string>): void => {
     setSelectedNoticeType(e.target.value);
-    setErrorMsg("");
   };
-
   const handleUpload = async (): Promise<void> => {
     if (!selectedNoticeType) {
-      setErrorMsg("Please select a notice type.");
+      enqueueSnackbar("Please select a notice type.", { variant: "error" });
       return;
     }
     if (!validatedFile) {
-      setErrorMsg("Please add a valid file before uploading.");
+      enqueueSnackbar("Please add a valid file before uploading.", { variant: "error" });
       return;
     }
     if (!userId) {
-      setErrorMsg("User profile not loaded. Please refresh the page.");
+      enqueueSnackbar("Please select a user from the Created By dropdown.", { variant: "error" });
       return;
     }
 
-    setLoading(true);
-    setSuccessMsg("");
-    setErrorMsg("");
+    setLoading(true);    try {
+      // Step 1: Upload file and get dynamic data
+      const bulkUploadResponse = await bulkUploadFile(validatedFile, selectedNoticeType);
+      
+      // Debug: Log the bulk upload response
+      console.warn("Bulk upload response:", bulkUploadResponse);
+        if (!bulkUploadResponse.success) {
+        throw new Error("Failed to process the uploaded file");
+      }
 
-    try {
-      const type = noticeTypes.find((t) => t.id === selectedNoticeType);
-      if (!type) throw new Error("Selected notice type is no longer valid.");
+      // Updated: Access dynamic_data from the first item in the data array
+      const dynamicDataArray = bulkUploadResponse.data[0]?.dynamic_data;
+      
+      // Debug: Log the dynamic data array
+      console.log("Dynamic data array:", dynamicDataArray);
+      console.log("First item structure:", dynamicDataArray?.[0]);
+      
+      if (!dynamicDataArray || dynamicDataArray.length === 0) {
+        throw new Error("No valid data found in the uploaded file");
+      }
 
-      const res = await bulkCreateNotices(
-        validatedFile,
-        selectedNoticeType,
-        userId,
-        type.dynamic_schema,
-      );
+      // Step 2: Create notices one by one
+      let createdCount = 0;
+      let failedCount = 0;
+      const failedErrors: string[] = [];
 
-      if (res.success) {
-        const { created, failed } = res.data;
-        const createdCount = created.length;
-        const failedMsg =
-          failed.length > 0
-            ? ` Some rows failed: ${failed
-                .map((f) => `Row ${f.row}: ${f.error}`)
-                .join("; ")}`
-            : "";
-        setSuccessMsg(`Successfully created ${createdCount} notices.${failedMsg}`);
-        resetForm();
+      for (let i = 0; i < dynamicDataArray.length; i++) {
+        try {
+          console.log(`Creating notice ${i + 1} with data:`, dynamicDataArray[i]);
+          await createIndividualNotice(selectedNoticeType, dynamicDataArray[i], userId);
+          createdCount++;
+        } catch (error) {
+          failedCount++;
+          const errorMsg = error instanceof Error ? error.message : "Unknown error";
+          console.error(`Failed to create notice ${i + 1}:`, errorMsg);
+          failedErrors.push(`Row ${i + 1}: ${errorMsg}`);
+        }
+      }
+
+      // Show results
+      if (createdCount > 0) {
+        const successMessage = `Successfully created ${createdCount} notices.`;
+        const failureMessage = failedCount > 0 
+          ? ` ${failedCount} failed: ${failedErrors.slice(0, 3).join("; ")}${failedErrors.length > 3 ? "..." : ""}`
+          : "";
+        
+        enqueueSnackbar(successMessage + failureMessage, { 
+          variant: createdCount > failedCount ? "success" : "warning",
+          autoHideDuration: 5000
+        });
+        
+        if (failedCount === 0) {
+          resetForm();
+        }
       } else {
-        setErrorMsg(
-          `Upload completed with errors: ${res.data.failed
-            .map((f) => `Row ${f.row}: ${f.error}`)
-            .join("; ")}`,
-        );
+        enqueueSnackbar(`All ${failedCount} notices failed to create: ${failedErrors.slice(0, 2).join("; ")}`, {
+          variant: "error",
+          autoHideDuration: 5000
+        });
       }
     } catch (err) {
-      setErrorMsg(
-        err instanceof Error
-          ? err.message
-          : "An unexpected error occurred during upload.",
-      );
+      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred during upload.";
+      enqueueSnackbar(errorMessage, { variant: "error" });
     } finally {
       setLoading(false);
     }
   };
-
   // ---------- memoised values ----------------------------------------------
 
   const selectedSchema = useMemo(
@@ -263,22 +231,34 @@ const BulkUpload: React.FC = () => {
         <Typography variant="h5" gutterBottom>
           Bulk Notice Upload
         </Typography>
-
-        {errorMsg && <Banner severity="error" message={errorMsg} />}
-        {successMsg && <Banner severity="success" message={successMsg} />}
-
+       {/* -----------------NoticeID dropdown---------------- */}
         <FormControl fullWidth sx={{ mb: 2 }} required>
           <InputLabel id="notice-type-label">Notice Type</InputLabel>
           <Select
             labelId="notice-type-label"
             value={selectedNoticeType}
-            label="Notice Type"
             onChange={handleNoticeTypeChange}
             disabled={loading}
           >
             {noticeTypes.map((nt) => (
               <MenuItem key={nt.id} value={nt.id}>
                 {nt.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+    {/* -----------------Username dropdown---------------- */}
+        <FormControl fullWidth sx={{ mb: 2 }} required>
+          <InputLabel id="created-by-label">Created By</InputLabel>
+          <Select
+            labelId="created-by-label" 
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            disabled={loading || usersLoading}
+          >
+            {users.map((user) => (
+              <MenuItem key={user.id} value={user.id}>
+                {user.username}
               </MenuItem>
             ))}
           </Select>

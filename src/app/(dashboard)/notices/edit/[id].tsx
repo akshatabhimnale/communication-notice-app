@@ -12,14 +12,16 @@ export default function EditNoticePage() {
     state.notice.notices.find((n) => n.id === id)
   );
 
-  if (!notice) return <p>Notice not found.</p>;
+  if (!notice || !notice.title || !notice.description) {
+  return <p>Notice not found or incomplete data.</p>;
+}
 
   return (
     <Container>
       <Typography variant="h4" gutterBottom>
         Edit Notice
       </Typography>
-      <NoticeForm initialData={notice} isEdit />
+      <NoticeForm initialData={{ id: notice.id, title: notice.title as string, description: notice.description as string }} isEdit />
     </Container>
   );
 }

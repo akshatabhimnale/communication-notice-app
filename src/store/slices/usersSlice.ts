@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { User, fetchUsers,PaginatedUserResponse } from "@/services/userService";
+import { User, fetchUsers, PaginatedUserResponse } from "@/services/userService";
 import { AxiosError } from "axios";
 
 // Update User interface to include optional deleted flag
@@ -34,10 +34,32 @@ const initialState: UserState = {
 **/
 export const fetchUsersThunk = createAsyncThunk(
   "user/fetchAll",
-  async (url: string | undefined, { rejectWithValue }) => {
+  async (_: string | undefined, { rejectWithValue }) => {
     try {
-      const response = await fetchUsers(url);
-      return response;
+      let page = 1;
+      let allResults: User[] = [];
+      let count = 0;
+      let next: string | null = null;
+      let previous: string | null = null;
+      let firstPage = true;
+      do {
+        // Use your usersApiClient to fetch each page
+        const response = await fetchUsers(`/users/?page=${page}`);
+        if (firstPage) {
+          count = response.count;
+          previous = response.previous;
+          firstPage = false;
+        }
+        allResults = allResults.concat(response.results);
+        next = response.next;
+        page++;
+      } while (next);
+      return {
+        count,
+        next: null,
+        previous,
+        results: allResults,
+      } as PaginatedUserResponse;
     } catch (error: unknown) {
       const axiosError = error as AxiosError;
       const status = axiosError.response?.status;
