@@ -12,6 +12,8 @@ function ToolbarActions() {
     <Stack direction="row">  
       <ProfileButton/>
       <ThemeSwitcher />
+            <LogoutButton />
+
     </Stack>
   );
 }
@@ -27,7 +29,6 @@ export default function DashboardLayoutWrapper({
     }}
     >
       <PageContainer>{children}</PageContainer>
-      <LogoutButton />
     </DashboardLayout>
   );
 }
