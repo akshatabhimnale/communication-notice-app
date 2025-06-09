@@ -83,7 +83,7 @@ const NAVIGATION: Navigation = [
   {
     title: "Settings",
     icon: <SettingsIcon />,
-    segment: "settings",
+    segment: "admin/settings",
   },
 ];
 
