@@ -54,7 +54,7 @@ export const NoticeTypeForm = ({
   const [selectedTemplate, setSelectedTemplate] = useState<template | null>(null);
   const [templateData, setTemplateData] = useState<{
     name: string;
-    channel: string;
+    channel: string[];
     template_content: string;
     id?: string;
   } | null>(null);
@@ -123,7 +123,7 @@ export const NoticeTypeForm = ({
 
   const handleTemplateConfirm = (data: {
     name: string;
-    channel: string;
+    channel: string[];
     template_content: string;
   }) => {
     setTemplateData({ ...data, id: selectedTemplate?.id });

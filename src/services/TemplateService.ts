@@ -11,7 +11,7 @@ export interface PaginatedTemplateResponse {
 
 export interface template {
   id: string;
-  channel: string;
+  channel: string[]; // Changed to string[] to match API
   template_content: string;
   created_at: string;
   updated_at: string;
@@ -35,7 +35,7 @@ export const fetchTemplates = async (
 
 // Create a template for a notice type
 export const createTemplate = async (data: {
-  channel: string;
+  channel: string | string[];
   template_content: string;
   notice_type: string;
 }) => {
@@ -44,7 +44,22 @@ export const createTemplate = async (data: {
     throw new Error("No authentication token found. Please log in.");
   }
   try {
-    const response = await noticeApiClient.post<template>("/templates/", data);
+    // Normalize channel to array
+    const normalizedData = {
+      ...data,
+      channel: Array.isArray(data.channel) ? data.channel : [data.channel],
+    };
+    // Validate inputs
+    if (!normalizedData.channel.length) {
+      throw new Error("Channel is required.");
+    }
+    if (!normalizedData.template_content.trim()) {
+      throw new Error("Template content cannot be empty.");
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedData.notice_type)) {
+      throw new Error("Invalid notice type UUID.");
+    }
+    const response = await noticeApiClient.post<template>("/templates/", normalizedData);
     return response.data;
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
@@ -58,13 +73,13 @@ export const createTemplate = async (data: {
       );
     }
     console.error("Error creating template:", error);
-    throw new Error("An unexpected error occurred");
+    throw error instanceof Error ? error : new Error("An unexpected error occurred");
   }
 };
 
 // Update a template by ID
 export const updateTemplate = async (id: string, data: {
-  channel: string;
+  channel: string | string[];
   template_content: string;
   notice_type: string;
 }) => {
@@ -73,7 +88,22 @@ export const updateTemplate = async (id: string, data: {
     throw new Error("No authentication token found. Please log in.");
   }
   try {
-    const response = await noticeApiClient.put<template>(`/templates/${id}/`, data);
+    // Normalize channel to array
+    const normalizedData = {
+      ...data,
+      channel: Array.isArray(data.channel) ? data.channel : [data.channel],
+    };
+    // Validate inputs
+    if (!normalizedData.channel.length) {
+      throw new Error("Channel is required.");
+    }
+    if (!normalizedData.template_content.trim()) {
+      throw new Error("Template content cannot be empty.");
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedData.notice_type)) {
+      throw new Error("Invalid notice type UUID.");
+    }
+    const response = await noticeApiClient.put<template>(`/templates/${id}/`, normalizedData);
     return response.data;
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
@@ -87,10 +117,9 @@ export const updateTemplate = async (id: string, data: {
       );
     }
     console.error("Error updating template:", error);
-    throw new Error("An unexpected error occurred");
+    throw error instanceof Error ? error : new Error("An unexpected error occurred");
   }
 };
-
 
 // Delete a template by ID
 export const deleteTemplate = async (id: string) => {
