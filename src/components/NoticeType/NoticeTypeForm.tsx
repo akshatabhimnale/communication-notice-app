@@ -301,7 +301,7 @@ export const NoticeTypeForm = ({
           setSelectedTemplate(null);
         }}
         onConfirm={handleTemplateConfirm}
-        initialName={selectedTemplate?.channel || values.name}
+        initialName={selectedTemplate ? selectedTemplate.channel.join(", ") : values.name}
         dynamicFields={Object.entries(values.dynamic_schema).map(([field_name, value]) => ({
           field_name,
           label: value.label || field_name,

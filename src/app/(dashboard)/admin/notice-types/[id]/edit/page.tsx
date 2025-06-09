@@ -99,7 +99,7 @@ export default function EditNoticeType() {
 
   const handleSubmit = async (
     values: NoticeTypeFormValues,
-    templateData?: { name: string; channel: string; template_content: string; id?: string }
+    templateData?: { name: string; channel: string[]; template_content: string; id?: string }
   ) => {
     if (!id || typeof id !== "string") {
       setError("Invalid notice type ID.");

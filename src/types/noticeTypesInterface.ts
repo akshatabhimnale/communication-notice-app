@@ -103,7 +103,7 @@ export interface NoticeTypeFormProps {
   initialValues?: Partial<NoticeTypeFormValues>;
   onSubmit: (
     values: NoticeTypeFormValues,
-    templateData?: { name: string; channel: string; template_content: string; id?: string }
+    templateData?: { name: string; channel: string[]; template_content: string; id?: string }
   ) => Promise<void>;
   onCancel: () => void;
   mode: "create" | "edit";

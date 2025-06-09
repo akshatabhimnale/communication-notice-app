@@ -35,7 +35,7 @@ export const fetchTemplates = async (
 
 // Create a template for a notice type
 export const createTemplate = async (data: {
-  channel: string | string[];
+  channel:string[];
   template_content: string;
   notice_type: string;
 }) => {
@@ -79,7 +79,7 @@ export const createTemplate = async (data: {
 
 // Update a template by ID
 export const updateTemplate = async (id: string, data: {
-  channel: string | string[];
+  channel: string[];
   template_content: string;
   notice_type: string;
 }) => {
