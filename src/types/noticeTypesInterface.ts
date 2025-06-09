@@ -56,6 +56,13 @@ export interface PaginatedResponse {
   results: NoticeType[];
 }
 
+export interface PaginatedNoticeResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Notice[];
+}
+
 export interface ApiSchemaField {
   type: string;
   label: string;

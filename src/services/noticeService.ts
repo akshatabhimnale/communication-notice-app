@@ -7,6 +7,7 @@ import {
   DynamicSchema,
   NoticeType,
   PaginatedResponse,
+  PaginatedNoticeResponse,
   ApiSchemaField,
   ApiResponse,
   UploadSchemaResponse,
@@ -81,8 +82,32 @@ const inferFieldType = (
 };
 
 export const fetchNotices = async () => {
-  const response = await noticeApiClient.get<Notice[]>("/notices/");
-  return response.data;
+  const token = getTokenFromCookie();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in.");
+  }
+  try {
+    const response = await noticeApiClient.get<PaginatedNoticeResponse>("/notices/");
+    return response.data.results;
+  } catch (err: unknown) {
+    if (err instanceof AxiosError) {
+      console.error("Full error:", err.response?.data, err.config);
+      if (err.response?.status === 401) {
+        clearTokenCookie();
+        throw new Error(
+          "Authentication failed. Your session may have expired. Please log in again."
+        );
+      }
+      throw new Error(
+        err.response
+          ? `API Error ${err.response.status}: ${JSON.stringify(
+              err.response.data
+            )}`
+          : "Network Error: Unable to reach the server"
+      );
+    }
+    throw new Error("An unexpected error occurred");
+  }
 };
 
 export const createNotice = async (data: Notice): Promise<Notice> => {
