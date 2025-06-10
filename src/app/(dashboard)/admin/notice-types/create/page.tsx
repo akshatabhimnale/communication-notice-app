@@ -65,7 +65,7 @@ export default function CreateNoticeType() {
 
   const handleSubmit = async (
     formValues: Omit<NoticeTypeFormValues, "org_id">,
-    templateData?: { name: string; channel: string; template_content: string }
+    templateData?: { name: string; channel: string[]; template_content: string }
   ) => {
     console.log("handleSubmit triggered. FormValues:", formValues, "TemplateData:", templateData);
     setError(null);

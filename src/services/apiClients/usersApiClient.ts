@@ -11,7 +11,7 @@ interface StoreState {
 
 const userApiClient = axios.create({
   baseURL: API_URLS.USERS_SERVICE,
-  timeout: 15000, // Increased to 15 seconds
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -38,7 +38,7 @@ axiosRetry(userApiClient, {
 });
 
 export const setAuthorizationHeader = (token: string) => {
-  userApiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  userApiClient.defaults.headers.Authorization = `Bearer ${token}`;
 };
 
 let getState: () => StoreState = () => ({ auth: { accessToken: null } });
@@ -50,15 +50,23 @@ export const setStoreAccessor = (storeGetState: () => StoreState) => {
 userApiClient.interceptors.request.use(
   (config) => {
     // Normalize URL to prevent double-prefixing
-    if (config.url?.startsWith("http://") || config.url?.startsWith("https://")) {
-      config.url = new URL(config.url).pathname + (new URL(config.url).search || "");
+    if (config.url && (config.url.startsWith("http://") || config.url.startsWith("https://"))) {
+      const parsedUrl = new URL(config.url);
+      // Strip baseURL prefix if present
+      const baseUrl = new URL(userApiClient.defaults.baseURL || "");
+      const basePath = baseUrl.pathname === "/" ? "" : baseUrl.pathname;
+      if (parsedUrl.pathname.startsWith(basePath)) {
+        config.url = parsedUrl.pathname.slice(basePath.length) + (parsedUrl.search || "");
+      } else {
+        config.url = parsedUrl.pathname + (parsedUrl.search || "");
+      }
     }
     if (process.env.NODE_ENV === "development") {
       console.log("Full request URL:", `${config.baseURL ?? ""}${config.url}`);
     }
 
     const { auth } = getState();
-    config.headers = config.headers ?? {};
+    config.headers = config.headers || {};
     if (auth.accessToken && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${auth.accessToken}`;
     }
@@ -78,7 +86,7 @@ userApiClient.interceptors.response.use(
     if (process.env.NODE_ENV === "development") {
       const status = error.response?.status || "No status";
       const data = error.response?.data || "No response data";
-      console.error("API Error:", status, data, error.config?.url);
+      console.error(`API Error ${status}: ${JSON.stringify(data)}`, error.config?.url);
     }
     if (axios.isAxiosError(error)) {
       if (error.response) {
