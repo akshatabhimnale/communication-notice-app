@@ -1,193 +1,229 @@
 "use client";
-
-import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Button, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
-  Typography, 
-  TextField, 
-  Alert, 
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Box,
+  Button,
   CircularProgress,
   Container,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
-  SelectChangeEvent
-} from '@mui/material';
-import { fetchNoticeTypesWithTransformedSchemas, uploadSchemaFromCsv, bulkCreateNotices } from '@/services/noticeService';
-import { fetchUserProfile } from '@/services/userService';
-import { TransformedNoticeType, PaginatedResponse } from '@/types/noticeTypesInterface';
+  Select,
+  SelectChangeEvent,
+  TextField,
+  Typography,
+} from "@mui/material";
+import {
+  bulkUploadFile,
+  createIndividualNotice,
+  fetchNoticeTypesWithTransformedSchemas,
+} from "@/services/noticeService";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchUsersThunk } from "@/store/slices/usersSlice";
+import {
+  PaginatedResponse,
+  TransformedNoticeType,
+} from "@/types/noticeTypesInterface";
+import { useSnackbar } from "notistack";
+// ---------- helpers ---------------------------------------------------------
+
+type FileValidation =
+  | { ok: true; file: File }
+  | { ok: false; error: string };
+
+const ACCEPTED_MIME_TYPES = new Set([
+  "text/csv",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+]);
+
+const ACCEPTED_EXTENSIONS = [".csv", ".xls", ".xlsx"];
+
+const validateFile = (file?: File | null): FileValidation => {
+  if (!file) return { ok: false, error: "No file selected." };
+
+  const { type, name } = file;
+
+  const hasValidMime = ACCEPTED_MIME_TYPES.has(type);
+  const hasValidExtension = ACCEPTED_EXTENSIONS.some((ext) =>
+    name.toLowerCase().endsWith(ext),
+  );
+
+  if (!hasValidMime && !hasValidExtension) {
+    return {
+      ok: false,
+      error: "Invalid file type. Please choose a .csv, .xls, or .xlsx file.",
+    };
+  }
+
+  return { ok: true, file };
+};
+
+/**
+ * Consolidates every side-effect (network, retry, pagination)
+ * in one object so UI remains declarative.
+ */
+const controller = {
+  async getNoticeTypes(): Promise<TransformedNoticeType[]> {
+    const all: TransformedNoticeType[] = [];
+    let page = 1;
+    let next: string | null = "";
+    do {
+      const res: Omit<PaginatedResponse, "results"> & {
+        results: TransformedNoticeType[];
+      } = await fetchNoticeTypesWithTransformedSchemas(page);
+      all.push(...res.results);
+      next = res.next;
+      page += 1;
+    } while (next);
+    return all;
+  },
+};
+
+// ---------- component -------------------------------------------------------
 
 const BulkUpload: React.FC = () => {
   const [noticeTypes, setNoticeTypes] = useState<TransformedNoticeType[]>([]);
-  const [selectedNoticeType, setSelectedNoticeType] = useState<string>('');
-  const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [userId, setUserId] = useState<string>('');
+  const [selectedNoticeType, setSelectedNoticeType] = useState("");
+  const [validatedFile, setValidatedFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState("");
 
-  // Fetch all notice types, handling pagination
-  const fetchAllNoticeTypes = async () => {
-    try {
-      let allNoticeTypes: TransformedNoticeType[] = [];
-      let page = 1;
-      let hasNext = true;
+  const dispatch = useAppDispatch();
+  const users = useAppSelector((state) => state.users.users);
+  const usersLoading = useAppSelector((state) => state.users.loading);
+  const { enqueueSnackbar } = useSnackbar();
 
-      while (hasNext) {
-        const response: Omit<PaginatedResponse, 'results'> & { results: TransformedNoticeType[] } = await fetchNoticeTypesWithTransformedSchemas(page);
-        allNoticeTypes = [...allNoticeTypes, ...response.results];
-        hasNext = !!response.next;
-        page++;
-      }
-
-      console.log("Fetched Notice Types:", allNoticeTypes);
-      setNoticeTypes(allNoticeTypes);
-    } catch (err) {
-      setError('Failed to fetch notice types. Please try again.');
-      console.error(err);
-    }
-  };
-
-  // Fetch user profile to get user ID with retry logic
-  const fetchUserId = async (retries = 3, delay = 1000): Promise<void> => {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        const profile = await fetchUserProfile();
-        setUserId(profile.id);
-        return;
-      } catch (err) {
-        if (attempt === retries) {
-          setError('Failed to fetch user profile after multiple attempts. Please check your network and try again.');
-          console.error(err);
-          return;
-        }
-        console.warn(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-  };
-
+  // ---------- side-effects --------------------------------------------------
   useEffect(() => {
-    fetchAllNoticeTypes();
-    fetchUserId();
+    controller
+      .getNoticeTypes()
+      .then(setNoticeTypes)
+      .catch(() => 
+        enqueueSnackbar("Unable to fetch notice types. Please try again later.", {
+          variant: "error",
+        })
+      );
+
+    dispatch(fetchUsersThunk(undefined));
+  }, [dispatch, enqueueSnackbar]);
+
+  // ---------- handlers ------------------------------------------------------
+  const resetForm = useCallback(() => {
+    setSelectedNoticeType("");
+    setUserId("");
+    setValidatedFile(null);
+    // Clear the hidden input
+    const input = document.getElementById("file-upload") as HTMLInputElement;
+    if (input) input.value = "";
   }, []);
+  const handleFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> => {
+    const file = e.target.files?.[0] || null;
 
-  // Handle file selection
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (!selectedFile) {
-      setFile(null);
-      setError('No file selected.');
+    const validation = validateFile(file);
+    if (!validation.ok) {
+      enqueueSnackbar(validation.error, { variant: "error" });
+      setValidatedFile(null);
       return;
     }
 
-    // Validate file type
-    const validTypes = ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-    if (!validTypes.includes(selectedFile.type)) {
-      setFile(null);
-      setError('Invalid file type. Please upload a .csv or .xlsx file.');
-      return;
-    }
-
-    try {
-      // Validate schema
-      const schema = await uploadSchemaFromCsv(selectedFile);
-      if (!schema || Object.keys(schema).length === 0) {
-        setError('Invalid CSV headers or schema.');
-        return;
-      }
-      setFile(selectedFile);
-      setError('');
-    } catch (err) {
-      setError('Failed to validate CSV schema. Please check the file format.');
-      console.error(err);
-    }
+    setValidatedFile(validation.file);
   };
-
-  // Handle notice type selection
-  const handleNoticeTypeChange = (event: SelectChangeEvent<string>) => {
-    setSelectedNoticeType(event.target.value);
-    setError('');
+  const handleNoticeTypeChange = (e: SelectChangeEvent<string>): void => {
+    setSelectedNoticeType(e.target.value);
   };
-
-  // Handle form reset
-  const handleCancel = () => {
-    setSelectedNoticeType('');
-    setFile(null);
-    setError('');
-    setSuccess('');
-    const input = document.getElementById('file-upload') as HTMLInputElement;
-    if (input) input.value = '';
-  };
-
-  // Handle upload and notice creation
-  const handleUpload = async () => {
+  const handleUpload = async (): Promise<void> => {
     if (!selectedNoticeType) {
-      setError('Please select a notice type.');
+      enqueueSnackbar("Please select a notice type.", { variant: "error" });
       return;
     }
-    if (!file) {
-      setError('Please upload a valid CSV or XLSX file.');
+    if (!validatedFile) {
+      enqueueSnackbar("Please add a valid file before uploading.", { variant: "error" });
       return;
     }
     if (!userId) {
-      setError('User profile not loaded. Please try again.');
+      enqueueSnackbar("Please select a user from the Created By dropdown.", { variant: "error" });
       return;
     }
 
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const selectedType = noticeTypes.find((type) => type.id === selectedNoticeType);
-      if (!selectedType) {
-        throw new Error('Selected notice type not found.');
+    setLoading(true);    try {
+      // Step 1: Upload file and get dynamic data
+      const bulkUploadResponse = await bulkUploadFile(validatedFile, selectedNoticeType);
+      
+      // Debug: Log the bulk upload response
+      console.warn("Bulk upload response:", bulkUploadResponse);
+        if (!bulkUploadResponse.success) {
+        throw new Error("Failed to process the uploaded file");
       }
 
-      console.log("Selected Notice Type Schema:", JSON.stringify(selectedType.dynamic_schema, null, 2));
+      // Updated: Access dynamic_data from the first item in the data array
+      const dynamicDataArray = bulkUploadResponse.data[0]?.dynamic_data;
+      
+      // Debug: Log the dynamic data array
+      console.log("Dynamic data array:", dynamicDataArray);
+      console.log("First item structure:", dynamicDataArray?.[0]);
+      
+      if (!dynamicDataArray || dynamicDataArray.length === 0) {
+        throw new Error("No valid data found in the uploaded file");
+      }
 
-      const response = await bulkCreateNotices(
-        file,
-        selectedNoticeType,
-        userId,
-        selectedType.dynamic_schema
-      );
+      // Step 2: Create notices one by one
+      let createdCount = 0;
+      let failedCount = 0;
+      const failedErrors: string[] = [];
 
-      if (response.success) {
-        const createdCount = response.data.created.length;
-        const failedCount = response.data.failed.length;
-        setSuccess(
-          `Successfully created ${createdCount} notices.${
-            failedCount > 0
-              ? ` Failed to create ${failedCount} rows: ${response.data.failed
-                  .map((f) => `Row ${f.row}: ${f.error}`)
-                  .join('; ')}`
-              : ''
-          }`
-        );
-        handleCancel();
+      for (let i = 0; i < dynamicDataArray.length; i++) {
+        try {
+          console.log(`Creating notice ${i + 1} with data:`, dynamicDataArray[i]);
+          await createIndividualNotice(selectedNoticeType, dynamicDataArray[i], userId);
+          createdCount++;
+        } catch (error) {
+          failedCount++;
+          const errorMsg = error instanceof Error ? error.message : "Unknown error";
+          console.error(`Failed to create notice ${i + 1}:`, errorMsg);
+          failedErrors.push(`Row ${i + 1}: ${errorMsg}`);
+        }
+      }
+
+      // Show results
+      if (createdCount > 0) {
+        const successMessage = `Successfully created ${createdCount} notices.`;
+        const failureMessage = failedCount > 0 
+          ? ` ${failedCount} failed: ${failedErrors.slice(0, 3).join("; ")}${failedErrors.length > 3 ? "..." : ""}`
+          : "";
+        
+        enqueueSnackbar(successMessage + failureMessage, { 
+          variant: createdCount > failedCount ? "success" : "warning",
+          autoHideDuration: 5000
+        });
+        
+        if (failedCount === 0) {
+          resetForm();
+        }
       } else {
-        setError(
-          `Failed to create notices: ${response.data.failed
-            .map((f) => `Row ${f.row}: ${f.error}`)
-            .join('; ')}`
-        );
+        enqueueSnackbar(`All ${failedCount} notices failed to create: ${failedErrors.slice(0, 2).join("; ")}`, {
+          variant: "error",
+          autoHideDuration: 5000
+        });
       }
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'An error occurred during upload. Please try again.'
-      );
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred during upload.";
+      enqueueSnackbar(errorMessage, { variant: "error" });
     } finally {
       setLoading(false);
     }
   };
+  // ---------- memoised values ----------------------------------------------
+
+  const selectedSchema = useMemo(
+    () => noticeTypes.find((t) => t.id === selectedNoticeType)?.dynamic_schema,
+    [noticeTypes, selectedNoticeType],
+  );
+
+  // ---------- render --------------------------------------------------------
 
   return (
     <Container maxWidth="sm">
@@ -195,61 +231,101 @@ const BulkUpload: React.FC = () => {
         <Typography variant="h5" gutterBottom>
           Bulk Notice Upload
         </Typography>
-        <Box sx={{ mt: 2 }}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {success}
-            </Alert>
-          )}
-          <FormControl fullWidth sx={{ mb: 2 }} required>
-            <InputLabel id="notice-type-label">Notice Type</InputLabel>
-            <Select
-              labelId="notice-type-label"
-              value={selectedNoticeType}
-              label="Notice Type"
-              onChange={handleNoticeTypeChange}
-              disabled={loading}
-            >
-              {noticeTypes.map((type) => (
-                <MenuItem key={type.id} value={type.id}>
-                  {type.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            id="file-upload"
-            type="file"
-            inputProps={{ accept: '.csv,.xlsx' }}
-            onChange={handleFileChange}
-            fullWidth
-            sx={{ mb: 2 }}
+       {/* -----------------NoticeID dropdown---------------- */}
+        <FormControl fullWidth sx={{ mb: 2 }} required>
+          <InputLabel id="notice-type-label">Notice Type</InputLabel>
+          <Select
+            labelId="notice-type-label"
+            value={selectedNoticeType}
+            onChange={handleNoticeTypeChange}
             disabled={loading}
-            helperText={file ? `Selected file: ${file.name}` : 'Upload a .csv or .xlsx file'}
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={handleCancel}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleUpload}
-              disabled={loading || !file || !selectedNoticeType || !userId}
-              startIcon={loading ? <CircularProgress size={20} /> : null}
-            >
-              Upload & Create Notices
-            </Button>
-          </Box>
+          >
+            {noticeTypes.map((nt) => (
+              <MenuItem key={nt.id} value={nt.id}>
+                {nt.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+    {/* -----------------Username dropdown---------------- */}
+        <FormControl fullWidth sx={{ mb: 2 }} required>
+          <InputLabel id="created-by-label">Created By</InputLabel>
+          <Select
+            labelId="created-by-label" 
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            disabled={loading || usersLoading}
+          >
+            {users.map((user) => (
+              <MenuItem key={user.id} value={user.id}>
+                {user.username}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Drag-and-Drop area doubles as file input label */}
+        <Box
+          sx={{
+            border: "2px dashed",
+            borderColor: "divider",
+            borderRadius: 2,
+            p: 3,
+            mb: 2,
+            textAlign: "center",
+            cursor: "pointer",
+            "&:hover": { backgroundColor: "action.hover" },
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const droppedFile = e.dataTransfer.files?.[0] || null;
+            handleFileChange({
+              target: { files: droppedFile ? [droppedFile] : null },
+            } as unknown as React.ChangeEvent<HTMLInputElement>);
+          }}
+          onClick={() =>
+            document.getElementById("file-upload")?.click()
+          }
+        >
+          <Typography variant="body2">
+            {validatedFile
+              ? `Selected file: ${validatedFile.name}`
+              : "Drag & drop your .csv, .xls, or .xlsx file here, or click to browse"}
+          </Typography>
         </Box>
+
+        {/* Hidden native input to preserve accessibility */}
+        <TextField
+          id="file-upload"
+          type="file"
+          sx={{ display: "none" }}
+          inputProps={{ accept: ".csv,.xls,.xlsx" }}
+          onChange={handleFileChange}
+          disabled={loading}
+        />
+
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+          <Button variant="outlined" onClick={resetForm} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleUpload}
+            disabled={
+              loading || !validatedFile || !selectedNoticeType || !userId
+            }
+            startIcon={loading ? <CircularProgress size={20} /> : undefined}
+          >
+            Upload &amp; Create Notices
+          </Button>
+        </Box>
+
+        {selectedSchema && (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 2 }}>
+            Expected Columns: {Object.keys(selectedSchema).join(", ")}
+          </Typography>
+        )}
       </Paper>
     </Container>
   );

@@ -1,8 +1,23 @@
 export interface Notice {
   id?: string;
-  title: string;
-  description: string;
+  notice_type?: string;
+  dynamic_data?: Record<string, string | number | boolean>;
+  created_by?: string;
+  status?: string;
+  priority?: string;
+  created_at?: string;
+  // Legacy fields for backward compatibility
+  title?: string;
+  description?: string;
   createdAt?: string;
+}
+
+export interface CreateNoticeRequest {
+  notice_type: string;
+  dynamic_data: Record<string, string | number | boolean>;
+  created_by: string;
+  status: string;
+  priority: string;
 }
 
 export interface BulkUploadResponse {
@@ -40,6 +55,13 @@ export interface PaginatedResponse {
   next: string | null;
   previous: string | null;
   results: NoticeType[];
+}
+
+export interface PaginatedNoticeResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Notice[];
 }
 
 export interface ApiSchemaField {
