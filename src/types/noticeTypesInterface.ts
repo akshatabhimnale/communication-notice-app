@@ -47,6 +47,7 @@ export interface NoticeType {
   description: string | null;
   dynamic_schema: Record<string, SchemaField>;
   created_at: string;
+  assigned_to: string | null;
 }
 
 export interface PaginatedResponse {
@@ -76,6 +77,7 @@ export interface ApiNoticeType {
   description: string | null;
   dynamic_schema: DynamicSchema;
   created_at: string;
+  assigned_to: string | null;
 }
 
 export interface ApiResponse {
@@ -116,20 +118,20 @@ export interface NoticeTypeFormValues {
   description: string | null;
   dynamic_schema: Record<string, SchemaField>;
   org_id: string;
+  assigned_to: string | null;
 }
 
 export interface NoticeTypeFormProps {
   initialValues?: Partial<NoticeTypeFormValues>;
   onSubmit: (
     values: NoticeTypeFormValues,
-    templateData?: { name: string; channel: string; template_content: string }
+    templateData?: { name: string; channel: string[]; template_content: string; id?: string }
   ) => Promise<void>;
   onCancel: () => void;
   mode: "create" | "edit";
   orgId: string;
   isLoading?: boolean;
 }
-
 
 export interface TransformedNoticeType {
   id: string;
@@ -138,4 +140,5 @@ export interface TransformedNoticeType {
   description: string | null;
   dynamic_schema: Record<string, SchemaField>;
   created_at: string;
+  assigned_to: string | null;
 }

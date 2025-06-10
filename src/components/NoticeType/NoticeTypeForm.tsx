@@ -7,12 +7,22 @@ import {
   Button,
   Box,
   CircularProgress,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import DynamicFieldBuilder from "@/app/(dashboard)/admin/notice-types/DynamicFieldBuilder";
 import TemplateSetupDialog from "../templates/TemplateSetupDialog";
 import { NoticeTypeFormProps, NoticeTypeFormValues } from "@/types/noticeTypesInterface";
 import { AppWindow } from "lucide-react";
+import { User } from "@/services/userService";
+import { template } from "@/services/TemplateService";
 
+interface ExtendedNoticeTypeFormProps extends NoticeTypeFormProps {
+  users: User[];
+  templates: template[];
+}
 
 export const NoticeTypeForm = ({
   initialValues = {
@@ -20,28 +30,33 @@ export const NoticeTypeForm = ({
     description: null,
     dynamic_schema: {},
     org_id: "",
+    assigned_to: null,
   },
   onSubmit,
   onCancel,
   mode,
   orgId,
   isLoading = false,
-}: NoticeTypeFormProps) => {
+  users,
+  templates,
+}: ExtendedNoticeTypeFormProps) => {
   const [values, setValues] = useState<NoticeTypeFormValues>({
     ...initialValues,
     org_id: orgId,
     name: initialValues?.name || "",
     description: initialValues?.description || null,
     dynamic_schema: initialValues?.dynamic_schema || {},
+    assigned_to: initialValues?.assigned_to || null,
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openTemplateDialog, setOpenTemplateDialog] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<template | null>(null);
   const [templateData, setTemplateData] = useState<{
     name: string;
-    channel: string;
+    channel: string[];
     template_content: string;
+    id?: string;
   } | null>(null);
 
   const validateForm = (): boolean => {
@@ -58,18 +73,13 @@ export const NoticeTypeForm = ({
     }
 
     if (!values.org_id) {
-      newErrors.dynamic_schema = "Organization ID is missing";
+      newErrors.org_id = "Organization ID is missing";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  /**
-   * Handles the form submission process.
-   * Validates the form, sets the submitting state, calls the onSubmit prop,
-   * and handles potential errors.
-   */
   const handleSubmit = async () => {
     console.log("handleSubmit: Starting form submission validation.");
     if (!validateForm()) {
@@ -84,6 +94,7 @@ export const NoticeTypeForm = ({
       ...values,
       org_id: orgId,
       description: values.description || null,
+      assigned_to: values.assigned_to || null,
     };
 
     console.log("handleSubmit: Submitting notice type data:", submissionData);
@@ -93,19 +104,16 @@ export const NoticeTypeForm = ({
       console.log("handleSubmit: No template data to include.");
     }
 
-
     try {
-      // Call the provided onSubmit function with the form values and optional template data
       await onSubmit(submissionData, templateData ?? undefined);
       console.log("handleSubmit: Submission successful.");
-
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "An unknown error occurred during submission.";
       console.error("handleSubmit: Submission failed.", err);
       setErrors((prev) => ({
         ...prev,
-        form: `Failed to save the notice type: ${errorMessage}`, // Provide more context
+        form: `Failed to save the notice type: ${errorMessage}`,
       }));
     } finally {
       console.log("handleSubmit: Finalizing submission process.");
@@ -115,11 +123,20 @@ export const NoticeTypeForm = ({
 
   const handleTemplateConfirm = (data: {
     name: string;
-    channel: string;
+    channel: string[];
     template_content: string;
   }) => {
-    setTemplateData(data);
+    setTemplateData({ ...data, id: selectedTemplate?.id });
     setOpenTemplateDialog(false);
+    setSelectedTemplate(null);
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    const template = templates.find((t) => t.id === templateId);
+    if (template) {
+      setSelectedTemplate(template);
+      setOpenTemplateDialog(true);
+    }
   };
 
   if (isLoading) {
@@ -132,16 +149,15 @@ export const NoticeTypeForm = ({
         {mode === "create" ? "Create" : "Edit"} Notice Type
       </Typography>
 
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 3,justifyContent: "center" }}>
-        
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}> {/* Added Box wrapper */}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 3, justifyContent: "center" }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
           <TextField
             label="Name"
             role="NoticeName"
             placeholder="Enter notice type name"
             required
             value={values.name}
-            onChange={(e) =>setValues((prev) => ({ ...prev, name: e.target.value }))}
+            onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
             error={!!errors.name}
             helperText={errors.name || "Required, max 100 characters"}
             inputProps={{ maxLength: 100 }}
@@ -150,17 +166,68 @@ export const NoticeTypeForm = ({
           />
           <Button
             variant="contained"
-            onClick={() => setOpenTemplateDialog(true)}
+            onClick={() => {
+              setSelectedTemplate(null);
+              setOpenTemplateDialog(true);
+            }}
             disabled={isSubmitting}
-            sx={{width: '32ch',textTransform: "none"}}
+            sx={{ width: "32ch", textTransform: "none" }}
             color="primary"
             size="large"
             role="Setup_btn"
             startIcon={<AppWindow />}
           >
-            Setup Common Template
+            Create New Template
           </Button>
-        </Box> 
+          {templates.length > 0 && (
+            <FormControl sx={{ width: "32ch" }}>
+              <InputLabel id="template-select-label">Select Template to Edit</InputLabel>
+              <Select
+                labelId="template-select-label"
+                label="Select Template to Edit"
+                value=""
+                onChange={(e) => handleTemplateSelect(e.target.value)}
+                disabled={isSubmitting}
+              >
+                <MenuItem value="">
+                  <em>Select a template</em>
+                </MenuItem>
+                {templates.map((template) => (
+                  <MenuItem key={template.id} value={template.id}>
+                    {`${template.channel} Template (${template.updated_at ? new Date(template.updated_at).toLocaleString() : "N/A"})`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        </Box>
+
+        <FormControl variant="outlined" sx={{ width: "70%" }} error={!!errors.assigned_to}>
+          <InputLabel id="assigned-to-label">Assigned To</InputLabel>
+          <Select
+            labelId="assigned-to-label"
+            label="Assigned To"
+            value={values.assigned_to || ""}
+            onChange={(e) =>
+              setValues((prev) => ({ ...prev, assigned_to: e.target.value || null }))
+            }
+            disabled={isSubmitting}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {users.map((user) => (
+              <MenuItem key={user.id} value={user.id}>
+                {`${user.first_name} ${user.last_name} (${user.email})`}
+              </MenuItem>
+            ))}
+          </Select>
+          {errors.assigned_to && (
+            <Typography color="error" variant="body2">
+              {errors.assigned_to}
+            </Typography>
+          )}
+        </FormControl>
 
         <DynamicFieldBuilder
           onSchemaChange={(schema) =>
@@ -175,16 +242,16 @@ export const NoticeTypeForm = ({
             {errors.dynamic_schema}
           </Typography>
         )}
-         <TextField
+        <TextField
           label="Description"
           role="Description"
           placeholder="Enter description"
           value={values.description || ""}
           onChange={(e) =>
-          setValues((prev) => ({
-          ...prev,
-          description: e.target.value || null,
-        }))
+            setValues((prev) => ({
+              ...prev,
+              description: e.target.value || null,
+            }))
           }
           sx={{ width: "70%" }}
           multiline
@@ -224,19 +291,26 @@ export const NoticeTypeForm = ({
           >
             Cancel
           </Button>
-          
         </Box>
       </Box>
 
       <TemplateSetupDialog
         open={openTemplateDialog}
-        onClose={() => setOpenTemplateDialog(false)}
+        onClose={() => {
+          setOpenTemplateDialog(false);
+          setSelectedTemplate(null);
+        }}
         onConfirm={handleTemplateConfirm}
-        initialName={values.name}
+        initialName={selectedTemplate ? selectedTemplate.channel.join(", ") : values.name}
         dynamicFields={Object.entries(values.dynamic_schema).map(([field_name, value]) => ({
           field_name,
           label: value.label || field_name,
         }))}
+        initialTemplate={
+          selectedTemplate
+            ? { channel: selectedTemplate.channel, template_content: selectedTemplate.template_content }
+            : undefined
+        }
       />
     </Container>
   );

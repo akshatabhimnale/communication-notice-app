@@ -142,6 +142,7 @@ export const createNoticeType = async (
       name: noticeData.name,
       description: noticeData.description || null,
       dynamic_schema: transformDynamicSchemaForApi(noticeData.dynamic_schema),
+      assigned_to: noticeData.assigned_to || null,
     };
     const response = await noticeApiClient.post<ApiResponse>(
       "/notice-types/",
@@ -155,6 +156,7 @@ export const createNoticeType = async (
       description: apiData.description,
       dynamic_schema: transformDynamicSchema(apiData.dynamic_schema),
       created_at: apiData.created_at,
+      assigned_to: apiData.assigned_to,
     };
   } catch (err: unknown) {
     if (err instanceof AxiosError) {
@@ -210,13 +212,11 @@ export const fetchNoticeTypes = async (
   }
 };
 
-// Updated function to fetch notice types with transformed schemas
 export const fetchNoticeTypesWithTransformedSchemas = async (
   page: number = 1
 ): Promise<Omit<PaginatedResponse, 'results'> & { results: TransformedNoticeType[] }> => {
   const response = await fetchNoticeTypes(page);
   const transformedResults = response.results.map((noticeType) => {
-    // Create a DynamicSchema object to match what transformDynamicSchema expects
     const dynamicSchemaForTransform: DynamicSchema = {
       fields: noticeType.dynamic_schema as unknown as Record<string, { type: string; label: string; required: boolean }>
     };
@@ -247,6 +247,7 @@ export const fetchNoticeTypeById = async (id: string): Promise<NoticeType> => {
       description: apiData.description,
       dynamic_schema: transformDynamicSchema(apiData.dynamic_schema),
       created_at: apiData.created_at,
+      assigned_to: apiData.assigned_to,
     };
   } catch (err: unknown) {
     if (err instanceof AxiosError) {
@@ -281,6 +282,7 @@ export const updateNoticeType = async (
       name: noticeData.name,
       description: noticeData.description,
       dynamic_schema: transformDynamicSchemaForApi(noticeData.dynamic_schema),
+      assigned_to: noticeData.assigned_to || null,
     };
     const response = await noticeApiClient.put<ApiResponse>(
       `/notice-types/${id}/`,
@@ -294,6 +296,7 @@ export const updateNoticeType = async (
       description: apiData.description,
       dynamic_schema: transformDynamicSchema(apiData.dynamic_schema),
       created_at: apiData.created_at,
+      assigned_to: apiData.assigned_to,
     };
   } catch (err: unknown) {
     if (err instanceof AxiosError) {
@@ -414,7 +417,6 @@ export const uploadSchemaFromCsv = async (
   }
 };
 
-// Validate CSV headers against notice type's dynamic_schema
 const validateCsvHeaders = (
   headers: string[],
   dynamicSchema: Record<string, SchemaField>
@@ -459,7 +461,6 @@ export const bulkCreateNotices = async (
   console.log("Input Notice Type Schema:", JSON.stringify(noticeTypeSchema, null, 2));
 
   try {
-    // Read CSV file
     const text = await file.text();
     const lines = text.split("\n").filter((line) => line.trim());
     if (lines.length < 2) {
@@ -473,7 +474,6 @@ export const bulkCreateNotices = async (
       throw new Error("Invalid CSV headers: Empty or contain commas");
     }
 
-    // Validate CSV headers against notice type schema
     const { isValid, missingFields, extraFields } = validateCsvHeaders(
       headers,
       noticeTypeSchema
@@ -489,7 +489,6 @@ export const bulkCreateNotices = async (
     const createdNotices: Notice[] = [];
     const failedRows: Array<{ row: number; error: string }> = [];
 
-    // Process each row (skip header)
     for (let i = 1; i < lines.length; i++) {
       const row = lines[i].split(",").map((v) => v.trim());
       if (row.length !== headers.length) {
@@ -497,18 +496,16 @@ export const bulkCreateNotices = async (
         continue;
       }
 
-      // Build dynamic_data from row, mapping headers to schema fields (case-insensitive)
       const dynamicData: Record<string, unknown> = {};
       headers.forEach((header, index) => {
         const schemaField = Object.keys(noticeTypeSchema).find(
           (field) => field.toLowerCase() === header.toLowerCase()
         );
         if (schemaField) {
-          dynamicData[schemaField] = row[index]; // Use schema field name (e.g., "Title" instead of "title")
+          dynamicData[schemaField] = row[index];
         }
       });
 
-      // Create notice payload
       const payload = {
         notice_type: noticeTypeId,
         dynamic_data: dynamicData,

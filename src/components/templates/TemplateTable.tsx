@@ -1,31 +1,30 @@
-"use client" 
-import React, { useEffect, useState } from "react";
+"use client";
+import React, { useState, useEffect } from "react";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
 import { fetchTemplatesThunk, deleteTemplateThunk } from "@/store/slices/templatesSlice";
-import { Button, Skeleton, Box } from "@mui/material"; // Import Skeleton and Box
+import { Button, Skeleton, Box, Typography } from "@mui/material";
 import { Trash2 } from "lucide-react";
 import TemplatePreview from "./TemplatePreview";
 
-type Template = {
+interface Template {
   id: string;
   notice_type?: string;
-  channel?: string;
+  channel: string[];
   updated_at?: string;
-  template_content: string;
-};
+  template_content?: string;
+}
 
 export default function TemplateTable() {
   const dispatch = useAppDispatch();
-
   const {
     templates,
     loading,
     nextPageUrl,
     prevPageUrl,
     error,
-    count
+    count,
   } = useAppSelector((state: RootState) => state.templates);
 
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -37,20 +36,19 @@ export default function TemplateTable() {
       dispatch(fetchTemplatesThunk(undefined));
       setIsInitialLoad(false);
     }
-  }, [dispatch, isInitialLoad]); 
+  }, [dispatch, isInitialLoad]);
 
-  const handleDelete = (id: string) => {
-    dispatch(deleteTemplateThunk(id))
-      .then((res) => {
-        console.log("Template deleted successfully:", res);
-      })
-      .catch((err) => {
-        console.error("Error deleting template:", err);
-      });
+  const handleDelete = async (id: string) => {
+    try {
+      await dispatch(deleteTemplateThunk(id)).unwrap();
+      console.log("Template deleted successfully: id=", id);
+    } catch (err) {
+      console.error("Error deleting template:", err);
+    }
   };
 
-  const handleEditPreview = (template: unknown) => {
-    setSelectedTemplate(template as Template);
+  const handleEditPreview = (template: Template) => {
+    setSelectedTemplate(template);
     setPreviewOpen(true);
   };
 
@@ -64,20 +62,33 @@ export default function TemplateTable() {
   };
 
   const handlePageChange = (url: string | null) => {
-    if (url) {
+    if (url && !loading) {
       dispatch(fetchTemplatesThunk(url));
     }
   };
 
   const columns: GridColDef[] = [
-    { field: "notice_type", headerName: "Notice Type", flex: 1 },
-    { field: "channel", headerName: "Channel", flex: 1 },
+    {
+      field: "notice_type",
+      headerName: "Notice Type",
+      flex: 1,
+      renderCell: (params: GridRenderCellParams) => (
+        <span>{params.row.notice_type || "-"}</span>
+      ),
+    },
+    {
+      field: "channel",
+      headerName: "Channel",
+      flex: 1,
+      renderCell: (params: GridRenderCellParams) => (
+        <span>{params.row.channel?.length ? params.row.channel.join(", ") : "-"}</span>
+      ),
+    },
     {
       field: "updated_at",
       headerName: "Updated Date",
       flex: 1,
-      renderCell: (params) => {
-        
+      renderCell: (params: GridRenderCellParams) => {
         if (params.row.updated_at) {
           try {
             const date = new Date(params.row.updated_at);
@@ -89,61 +100,60 @@ export default function TemplateTable() {
           }
         }
         return <span>-</span>;
-      }
+      },
     },
     {
-      field:"edit and preview",
+      field: "edit_and_preview",
       headerName: "Edit and Preview",
       sortable: false,
       filterable: false,
+      width: 180,
       renderCell: (params: GridRenderCellParams) => (
         <Button
-          color="inherit"
           variant="contained"
+          color="inherit"
           size="small"
-          onClick={() => handleEditPreview(params.row)}
-          style={{ cursor: "pointer" }}
+          onClick={() => handleEditPreview(params.row as Template)}
+          sx={{ textTransform: "none" }}
         >
           Edit and Preview
         </Button>
       ),
-      width: 180,
     },
     {
       field: "actions",
       headerName: "Actions",
       sortable: false,
       filterable: false,
+      width: 120,
       renderCell: (params: GridRenderCellParams) => (
         <Button
-          color="error"
           variant="text"
+          color="error"
           size="small"
           onClick={() => handleDelete(params.row.id)}
-          style={{ cursor: "pointer" }}
+          sx={{ minWidth: "unset" }}
         >
-          <Trash2 />
+          <Trash2 size={20} />
         </Button>
       ),
-      width: 120,
     },
   ];
 
-  const [paginationModel, setPaginationModel] = React.useState({
-    pageSize: 10,
+  const [paginationModel, setPaginationModel] = useState({
     page: 0,
+    pageSize: 10,
   });
 
-  // Skeleton Loader Component
   const DataGridSkeleton = () => (
-    <Box sx={{ height: 400, width: '100%' }}>
+    <Box sx={{ height: 400, width: "100%" }}>
       <Skeleton
         variant="rectangular"
-        sx={{ width: '100%', height: 45, mb: 2, borderRadius: 1 }}
+        sx={{ width: "100%", height: 45, mb: 2, borderRadius: 1 }}
         animation="wave"
       />
       {[...Array(paginationModel.pageSize)].map((_, rowIndex) => (
-        <Box key={rowIndex} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+        <Box key={rowIndex} sx={{ display: "flex", gap: 1, mb: 1 }}>
           {[...Array(5)].map((_, colIndex) => (
             <Skeleton
               key={colIndex}
@@ -158,31 +168,40 @@ export default function TemplateTable() {
   );
 
   return (
-    <div style={{ width: "100%" }}>
-      {error && <p style={{ color: "red" }}>Error: {error}</p>}
-      {loading ? ( // Conditionally render Skeleton or DataGrid
+    <Box sx={{ width: "100%", p: 2 }}>
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          Error: {error}
+        </Typography>
+      )}
+      {loading ? (
         <DataGridSkeleton />
+      ) : templates.length === 0 ? (
+        <Typography variant="body1" sx={{ textAlign: "center", py: 4 }}>
+          No templates available.
+        </Typography>
       ) : (
         <DataGrid
           rows={templates}
           columns={columns}
           getRowId={(row) => row.id}
-          pagination={true}
+          pagination
           paginationMode="server"
           disableRowSelectionOnClick
           autoHeight
           hideFooterSelectedRowCount
-          rowCount={count || 0} //total count from your API response
+          rowCount={count ?? 0}
           pageSizeOptions={[10]}
           paginationModel={paginationModel}
           onPaginationModelChange={(newModel) => {
             setPaginationModel(newModel);
-            if (newModel.page > paginationModel.page && nextPageUrl && !loading) {
+            if (newModel.page > paginationModel.page && nextPageUrl) {
               handlePageChange(nextPageUrl);
-            } else if (newModel.page < paginationModel.page && prevPageUrl && !loading) {
+            } else if (newModel.page < paginationModel.page && prevPageUrl) {
               handlePageChange(prevPageUrl);
             }
           }}
+          sx={{ "& .MuiDataGrid-root": { borderRadius: 1 } }}
         />
       )}
       <TemplatePreview
@@ -191,14 +210,15 @@ export default function TemplateTable() {
         template={
           selectedTemplate
             ? {
-                ...selectedTemplate,
-                channel: selectedTemplate.channel || "",
+                id: selectedTemplate.id,
+                channel: selectedTemplate.channel,
+                template_content: selectedTemplate.template_content || "",
                 notice_type: selectedTemplate.notice_type || "",
               }
             : null
         }
         onUpdated={handleTemplateUpdated}
       />
-    </div>
+    </Box>
   );
 }

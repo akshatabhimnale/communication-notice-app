@@ -1,4 +1,7 @@
 "use client";
+
+import LogoutIcon from "@mui/icons-material/Logout";
+import Button from "@mui/material/Button";
 import { logoutThunk } from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -10,7 +13,6 @@ export default function LogoutButton() {
 
   const handleLogout = async () => {
     try {
-      // imported logoutthunk from authslice 
       await dispatch(logoutThunk()).unwrap();
       router.push("/auth/login");
     } catch (error) {
@@ -18,5 +20,14 @@ export default function LogoutButton() {
     }
   };
 
-  return <button onClick={handleLogout}>Logout</button>;
+  return (
+    <Button
+      variant="outlined"
+      size="small"
+      startIcon={<LogoutIcon />}
+      onClick={handleLogout}
+    >
+      Logout
+    </Button>
+  );
 }

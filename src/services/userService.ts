@@ -3,7 +3,7 @@ import axios from "axios";
 import authApiClient, { setAuthToken } from "@/services/apiClients/authApiClient";
 import userApiClient from "./apiClients/usersApiClient";
 
-interface UserProfile {
+export interface UserProfile {
   id: string;
   username: string;
   email: string;
@@ -66,6 +66,7 @@ export const getTokenFromCookie = (): string | null => {
 export const clearTokenCookie = () => {
   document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure";
 };
+
 
 export const fetchUserProfile = async (): Promise<UserProfile> => {
   const token = getTokenFromCookie();
@@ -157,16 +158,16 @@ export const updateCurrentUserProfile = async (
  * @returns A promise that resolves to a PaginatedUserResponse object containing the list of users and pagination details.
  * @throws Will throw an error if the API request fails, after logging the error to the console.
  */
-export const fetchUsers = async (url?: string): Promise<PaginatedUserResponse> => {
-  try {
-    const endpoint = url || '/users/';
-    const response = await userApiClient.get<PaginatedUserResponse>(endpoint);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    throw error;
-  }
-};
+// export const fetchUsers = async (url?: string): Promise<PaginatedUserResponse> => {
+//   try {
+//     const endpoint = url || '/users/';
+//     const response = await userApiClient.get<PaginatedUserResponse>(endpoint);
+//     return response.data;
+//   } catch (error) {
+//     console.error("Error fetching users:", error);
+//     throw error;
+//   }
+// };
 
 /**
  * Edits an existing user by their ID.
@@ -213,6 +214,83 @@ export const deleteUser = async (id: string): Promise<void> => {
       console.error(`Status: ${error.response.status}, Details:`, error.response.data);
     }
     
+    throw error;
+  }
+};
+
+
+
+// export const fetchUserProfile = async (): Promise<UserProfile> => {
+//   try {
+//     const response = await userApiClient.get<UserProfile>("/profile/");
+//     return response.data;
+//   } catch (err: unknown) {
+//     if (err instanceof AxiosError) {
+//       console.error("Error fetching user profile:", err.response?.data, err.config);
+//       if (err.response?.status === 401) {
+//         throw new Error("Authentication failed. Your session may have expired. Please log in again.");
+//       }
+//       throw err;
+//     }
+//     throw new Error("An unexpected error occurred while fetching user profile.");
+//   }
+// };
+
+export const fetchUsers = async (url: string = "/users/"): Promise<PaginatedUserResponse> => {
+  try {
+    const response = await userApiClient.get<PaginatedUserResponse>(url);
+    return response.data;
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      console.error("Error fetching users:", error.response?.data, error.config);
+      if (error.response?.status === 401) {
+        throw new Error("Authentication failed. Your session may have expired. Please login again.");
+      }
+      if (error.response?.status === 404) {
+        throw new Error(`Resource not found: ${error.config?.url}`);
+      }
+      throw new Error(
+        error.response
+          ? `API Error ${error.response.status}: ${JSON.stringify(error.response.data)}`
+          : `Network Error: Unable to reach the server`
+      );
+    }
+    throw new Error("An unexpected error occurred while fetching users.");
+  }
+};
+
+export const fetchAllUsers = async (): Promise<User[]> => {
+  console.log("Fetching all users...");
+  try {
+    let allUsers: User[] = [];
+    let nextUrl: string | null = "/users/";
+
+    while (nextUrl) {
+      try {
+        const response: PaginatedUserResponse = await fetchUsers(nextUrl);
+        allUsers = [...allUsers, ...response.results];
+        // Normalize next URL if absolute
+        if (response.next) {
+          const parsedNext = new URL(response.next);
+          const baseUrl = new URL(userApiClient.defaults.baseURL || "");
+          const basePath = baseUrl.pathname === "/" ? "" : baseUrl.pathname;
+          nextUrl = parsedNext.pathname.startsWith(basePath)
+            ? parsedNext.pathname.slice(basePath.length) + (parsedNext.search || "")
+            : parsedNext.pathname + (parsedNext.search || "");
+        } else {
+          nextUrl = null;
+        }
+        console.log(`Fetched ${response.results.length} users, total so far: ${allUsers.length}, next: ${nextUrl}`);
+      } catch (error) {
+        console.warn(`Failed to fetch users for URL ${nextUrl}:`, error);
+        throw new Error(`Failed to fetch users page: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }
+
+    console.log("All users fetched successfully:", allUsers.length);
+    return allUsers;
+  } catch (error) {
+    console.error("Error fetching all users:", error);
     throw error;
   }
 };
