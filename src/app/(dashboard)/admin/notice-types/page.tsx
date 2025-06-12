@@ -96,14 +96,14 @@ export default function NoticeTypesList() {
       setLoading(false);
     }
   }, []);
-  const handleRetry = useCallback(() => {
-    setError(null);
-    if (search) {
-      loadAllNotices();
-    } else {
-      loadNotices(paginationModel.page);
-    }
-  }, [search, loadAllNotices, loadNotices, paginationModel.page]);
+  // const handleRetry = useCallback(() => {
+  //   setError(null);
+  //   if (search) {
+  //     loadAllNotices();
+  //   } else {
+  //     loadNotices(paginationModel.page);
+  //   }
+  // }, [search, loadAllNotices, loadNotices, paginationModel.page]);
 
   useEffect(() => {
     if (!search) {
