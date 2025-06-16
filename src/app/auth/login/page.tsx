@@ -34,7 +34,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push(user.role === "admin" ? "/admin" : "/user");
+      router.push(user.role === "admin" ? "/admin" : "/");
     }
   }, [user, router]);
 

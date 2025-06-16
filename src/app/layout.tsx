@@ -24,7 +24,7 @@ const NAVIGATION: Navigation = [
   {
     title: "Dashboard",
     icon: <DashboardIcon />,
-    segment: "",
+    segment: "admin/dashboard",
   },
   {
     title: "Notice Type",
@@ -73,10 +73,10 @@ const NAVIGATION: Navigation = [
   {
     title: "Reports",
     icon: <BarChartIcon />,
-    segment: "",
+    segment: "admin/reports",
   },
   {
-    title: "User Management",
+    title: "User Management",    //adminonly
     icon: <GroupIcon />,
     segment: "admin/users",
   },
