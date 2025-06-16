@@ -1,5 +1,4 @@
 import * as React from 'react';
-import Typography from '@mui/material/Typography';
 import { AdminOnly, UserOnly, UserOrAdmin } from "@/components/auth/RoleGuard";
 export default async function HomePage() {
   return <>
@@ -85,7 +84,7 @@ export default async function HomePage() {
           borderRadius: '8px'
         }}>
           <h2 style={{ color: '#ef6c00' }}>🟡 FALLBACK MESSAGE</h2>
-          <p style={{ color: '#ff9800' }}>You don't have admin privileges to see the admin content</p>
+          <p style={{ color: '#ff9800' }}>You dont have admin privileges to see the admin content</p>
         </div>
       }>
         <div style={{ 

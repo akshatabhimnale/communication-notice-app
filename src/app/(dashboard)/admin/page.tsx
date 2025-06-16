@@ -87,7 +87,7 @@ export default function DashboardPage() {
           borderRadius: '8px'
         }}>
           <h2 style={{ color: '#ef6c00' }}>🟡 FALLBACK MESSAGE</h2>
-          <p style={{ color: '#ff9800' }}>You don't have admin privileges to see the admin content</p>
+          <p style={{ color: '#ff9800' }}>You dont have admin privileges to see the admin content</p>
         </div>
       }>
         <div style={{ 
