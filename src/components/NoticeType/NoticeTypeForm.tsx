@@ -12,7 +12,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
-import DynamicFieldBuilder from "@/app/(dashboard)/admin/notice-types/DynamicFieldBuilder";
+import DynamicFieldBuilder from "@/app/(dashboard)/[role]/notice-types/DynamicFieldBuilder";
 import TemplateSetupDialog from "../templates/TemplateSetupDialog";
 import { NoticeTypeFormProps, NoticeTypeFormValues } from "@/types/noticeTypesInterface";
 import { AppWindow } from "lucide-react";

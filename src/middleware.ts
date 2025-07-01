@@ -18,7 +18,7 @@ const decodeJWT = (token: string): UserToken | null => {
 };
 
 const roleBasedRoutes: Record<string, string[]> = {
-  "/": ["admin"],
+  "/admin": ["admin"],
   "/user": ["user", "admin"],
 };
 
