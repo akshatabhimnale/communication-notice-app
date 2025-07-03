@@ -26,6 +26,7 @@ import {
   TransformedNoticeType,
 } from "@/types/noticeTypesInterface";
 import { useSnackbar } from "notistack";
+import { ClientAdminOnly } from "@/components/auth/ClientRoleGuard";
 // ---------- helpers ---------------------------------------------------------
 
 type FileValidation =
@@ -249,7 +250,7 @@ const BulkUpload: React.FC = () => {
         </FormControl>
     {/* -----------------Username dropdown---------------- */}
      
-
+            <ClientAdminOnly>
         <FormControl fullWidth sx={{ mb: 2 }} required>
           <InputLabel id="created-by-label">Created By</InputLabel>
           <Select
@@ -265,6 +266,7 @@ const BulkUpload: React.FC = () => {
             ))}
           </Select>
         </FormControl>
+        </ClientAdminOnly>
       
 
         {/* Drag-and-Drop area doubles as file input label */}
