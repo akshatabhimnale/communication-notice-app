@@ -11,7 +11,7 @@ interface ClientRoleGuardProps {
 
 export default function ClientRoleGuard({ 
   allowedRoles, 
-  children, 
+  children,
   fallback = null,
   showLoader = true
 }: ClientRoleGuardProps) {
