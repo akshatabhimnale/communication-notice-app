@@ -18,8 +18,8 @@ import { NoticeTypeFormProps, NoticeTypeFormValues } from "@/types/noticeTypesIn
 import { AppWindow } from "lucide-react";
 import { User } from "@/services/userService";
 import { template } from "@/services/TemplateService";
-import ClientRoleGuard,{ClientAdminOnly} from "../auth/ClientRoleGuard";
-import { useRole } from "@/hooks/useRole";
+import {ClientAdminOnly} from "../auth/ClientRoleGuard";
+// import { useRole } from "@/hooks/useRole";
 
 interface ExtendedNoticeTypeFormProps extends NoticeTypeFormProps {
   users: User[];
@@ -61,7 +61,7 @@ export const NoticeTypeForm = ({
     id?: string;
   } | null>(null);
 
-  const { isAdmin,hasRole } = useRole();
+  // const { isAdmin,hasRole } = useRole();
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
