@@ -26,7 +26,34 @@ import {
   TransformedNoticeType,
 } from "@/types/noticeTypesInterface";
 import { useSnackbar } from "notistack";
+import { ClientAdminOnly } from "@/components/auth/ClientRoleGuard";
+import { useRole } from "@/hooks/useRole";
 // ---------- helpers ---------------------------------------------------------
+
+// Utility function to decode JWT and get user ID
+const getUserIdFromToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    // Get token from document.cookie
+    const cookies = document.cookie.split(';');
+    const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('accessToken='));
+    if (!tokenCookie) return null;
+    
+    const token = tokenCookie.split('=')[1];
+    if (!token) return null;
+    
+    // Decode JWT token
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const decodedPayload = JSON.parse(atob(base64));
+    
+    return decodedPayload.user_id || null;
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return null;
+  }
+};
 
 type FileValidation =
   | { ok: true; file: File }
@@ -94,6 +121,7 @@ const BulkUpload: React.FC = () => {
   const users = useAppSelector((state) => state.users.users);
   const usersLoading = useAppSelector((state) => state.users.loading);
   const { enqueueSnackbar } = useSnackbar();
+  const { userRole } = useRole();
 
   // ---------- side-effects --------------------------------------------------
   useEffect(() => {
@@ -102,12 +130,20 @@ const BulkUpload: React.FC = () => {
       .then(setNoticeTypes)
       .catch(() => 
         enqueueSnackbar("Unable to fetch notice types. Please try again later.", {
-          variant: "error",
+          variant: "error", 
         })
       );
 
     dispatch(fetchUsersThunk(undefined));
-  }, [dispatch, enqueueSnackbar]);
+    
+    // Auto-set user ID for non-admin users
+    if (userRole === 'user') {
+      const currentUserId = getUserIdFromToken();
+      if (currentUserId) {
+        setUserId(currentUserId);
+      }
+    }
+  }, [dispatch, enqueueSnackbar, userRole]);
 
   // ---------- handlers ------------------------------------------------------
   const resetForm = useCallback(() => {
@@ -144,7 +180,14 @@ const BulkUpload: React.FC = () => {
       enqueueSnackbar("Please add a valid file before uploading.", { variant: "error" });
       return;
     }
-    if (!userId) {
+    
+    // For admin users, check if userId is selected. For regular users, it's auto-set
+    let finalUserId = userId;
+    if (userRole === 'user') {
+      finalUserId = getUserIdFromToken() || userId;
+    }
+    
+    if (!finalUserId) {
       enqueueSnackbar("Please select a user from the Created By dropdown.", { variant: "error" });
       return;
     }
@@ -178,7 +221,7 @@ const BulkUpload: React.FC = () => {
       for (let i = 0; i < dynamicDataArray.length; i++) {
         try {
           console.log(`Creating notice ${i + 1} with data:`, dynamicDataArray[i]);
-          await createIndividualNotice(selectedNoticeType, dynamicDataArray[i], userId);
+          await createIndividualNotice(selectedNoticeType, dynamicDataArray[i], finalUserId);
           createdCount++;
         } catch (error) {
           failedCount++;
@@ -248,21 +291,23 @@ const BulkUpload: React.FC = () => {
           </Select>
         </FormControl>
     {/* -----------------Username dropdown---------------- */}
-        <FormControl fullWidth sx={{ mb: 2 }} required>
-          <InputLabel id="created-by-label">Created By</InputLabel>
-          <Select
-            labelId="created-by-label" 
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            disabled={loading || usersLoading}
-          >
-            {users.map((user) => (
-              <MenuItem key={user.id} value={user.id}>
-                {user.username}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <ClientAdminOnly>
+          <FormControl fullWidth sx={{ mb: 2 }} required>
+            <InputLabel id="created-by-label">Created By</InputLabel>
+            <Select
+              labelId="created-by-label" 
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              disabled={loading || usersLoading}
+            >
+              {users.map((user) => (
+                <MenuItem key={user.id} value={user.id}>
+                  {user.username}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ClientAdminOnly>
 
         {/* Drag-and-Drop area doubles as file input label */}
         <Box
@@ -313,7 +358,10 @@ const BulkUpload: React.FC = () => {
             variant="contained"
             onClick={handleUpload}
             disabled={
-              loading || !validatedFile || !selectedNoticeType || !userId
+              loading || 
+              !validatedFile || 
+              !selectedNoticeType || 
+              (userRole === 'admin' && !userId) // Only require userId selection for admin users
             }
             startIcon={loading ? <CircularProgress size={20} /> : undefined}
           >
