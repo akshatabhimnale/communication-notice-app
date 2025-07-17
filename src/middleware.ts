@@ -17,11 +17,11 @@ const decodeJWT = (token: string): UserToken | null => {
   }
 };
 
-const roleBasedRoutes: Record<string, string[]> = {
-  "/admin": ["admin"],
-  "/": ["user","admin"],
-  "/user": ["user", "admin"],
-};
+// const roleBasedRoutes: Record<string, string[]> = {
+//   "/admin": ["admin"],
+//   "/": ["user","admin"],
+//   "/user": ["user", "admin"],
+// };
 
 export async function middleware(req: NextRequest) {
   console.log("🌐 Middleware Triggered:", req.nextUrl.pathname);
