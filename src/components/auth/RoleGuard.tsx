@@ -1,4 +1,4 @@
-import { getCurrentUserRole } from '@/lib/authServer';
+import { getCurrentUserRole } from "@/lib/authServer";
 
 interface RoleGuardProps {
   allowedRoles: string[];
@@ -12,11 +12,11 @@ export default async function RoleGuard({
   fallback = null 
 }: RoleGuardProps) {
   const userRole = await getCurrentUserRole();
-  
+
   if (!userRole || !allowedRoles.includes(userRole)) {
     return <>{fallback}</>;
   }
-  
+
   return <>{children}</>;
 }
 

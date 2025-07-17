@@ -18,8 +18,33 @@ import { NoticeTypeFormProps, NoticeTypeFormValues } from "@/types/noticeTypesIn
 import { AppWindow } from "lucide-react";
 import { User } from "@/services/userService";
 import { template } from "@/services/TemplateService";
-import {ClientAdminOnly} from "../auth/ClientRoleGuard";
-// import { useRole } from "@/hooks/useRole";
+import { ClientAdminOnly } from "@/components/auth/ClientRoleGuard";
+
+// Utility function to decode JWT and get user info
+const decodeJWT = (token: string): { user_id?: string; role?: string } | null => {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const decodedPayload = JSON.parse(atob(base64));
+    return decodedPayload;
+  } catch (error) {
+    console.error("❌ JWT Decode Error:", error);
+    return null;
+  }
+};
+
+// Get current user info from cookie
+const getCurrentUserInfo = (): { user_id?: string; role?: string } | null => {
+  if (typeof window === 'undefined') return null;
+  
+  const cookies = document.cookie.split(';');
+  const accessTokenCookie = cookies.find(cookie => cookie.trim().startsWith('accessToken='));
+  
+  if (!accessTokenCookie) return null;
+  
+  const token = accessTokenCookie.split('=')[1];
+  return decodeJWT(token);
+};
 
 interface ExtendedNoticeTypeFormProps extends NoticeTypeFormProps {
   users: User[];
@@ -94,11 +119,16 @@ export const NoticeTypeForm = ({
     console.log("handleSubmit: Form validation successful. Proceeding with submission.");
     setIsSubmitting(true);
 
+    // Get current user info to handle assigned_to field for non-admin users
+    const currentUser = getCurrentUserInfo();
+    const isAdmin = currentUser?.role === 'admin';
+    
     const submissionData = {
       ...values,
       org_id: orgId,
       description: values.description || null,
-      assigned_to: values.assigned_to || null,
+      // For non-admin users, always set assigned_to to their own user_id
+      assigned_to: isAdmin ? (values.assigned_to || null) : (currentUser?.user_id || null),
     };
 
     console.log("handleSubmit: Submitting notice type data:", submissionData);
