@@ -11,7 +11,7 @@ import {
   Button,
   CssBaseline,
   TextField,
-  FormControlLabel,
+
   Checkbox,
   Link,
   Box,
@@ -95,10 +95,34 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <FormControlLabel
-            control={<Checkbox value="remember" color="primary" />}
-            label="Remember me"
-          />
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mt: 1,
+              mb: 1,
+              flexWrap: "wrap", // Optional: Helps in small screens
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Checkbox value="remember" color="primary" id="remember" />
+              <label htmlFor="remember" style={{ fontSize: 14 }}>
+                Remember me
+              </label>
+            </Box>
+
+            <Link
+              href="/auth/Forgot"
+              variant="body2"
+              underline="hover"
+              color="primary"
+              sx={{ fontSize: 14, whiteSpace: "nowrap" }}
+            >
+              Forgot password?
+            </Link>
+          </Box>
+
           <Button
             type="submit"
             fullWidth

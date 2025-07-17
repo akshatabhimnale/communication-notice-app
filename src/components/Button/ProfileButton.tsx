@@ -1,3 +1,5 @@
+"use client"; // only if using Next.js App Router
+
 import { useState, MouseEvent } from "react";
 import { styled } from "@mui/material/styles";
 import Menu from "@mui/material/Menu";
@@ -5,7 +7,8 @@ import MenuItem from "@mui/material/MenuItem";
 import IconButton from "@mui/material/IconButton";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { keyframes } from "@emotion/react";
-
+import { useRouter } from "next/navigation"; // <-- You had the import, just not used
+import LogoutButton from "./LogoutButton";
 
 const pulse = keyframes`
   0% { transform: scale(1); }
@@ -14,9 +17,9 @@ const pulse = keyframes`
 `;
 
 const StyledIconButton = styled(IconButton)(({ theme }) => ({
-  width: 40, 
+  width: 40,
   height: 40,
-  marginRight: theme.spacing(1), 
+  marginRight: theme.spacing(1),
   background: `linear-gradient(45deg, ${theme.palette.primary.main}20, ${theme.palette.secondary.main}20)`,
   borderRadius: "50%",
   transition: "all 0.3s ease-in-out",
@@ -28,10 +31,9 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
   [theme.breakpoints.down("sm")]: {
     width: 36,
     height: 36,
-    marginRight: theme.spacing(0.5), 
+    marginRight: theme.spacing(0.5),
   },
 }));
-
 
 const StyledMenu = styled(Menu)(({ theme }) => ({
   "& .MuiPaper-root": {
@@ -44,7 +46,6 @@ const StyledMenu = styled(Menu)(({ theme }) => ({
   },
 }));
 
-
 const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
   padding: theme.spacing(1, 2),
   transition: "all 0.2s ease",
@@ -56,6 +57,7 @@ const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
 
 const ProfileButton = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const router = useRouter(); // ✅ initialize the router
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -67,20 +69,20 @@ const ProfileButton = () => {
 
   return (
     <>
-      <StyledIconButton 
-        onClick={handleClick} 
+      <StyledIconButton
+        onClick={handleClick}
         color="inherit"
         aria-label="profile menu"
       >
-        <AccountCircleIcon 
-          fontSize="large" 
-          sx={{ 
+        <AccountCircleIcon
+          fontSize="large"
+          sx={{
             filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
             transition: "filter 0.3s",
             "&:hover": {
               filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))",
-            }
-          }} 
+            },
+          }}
         />
       </StyledIconButton>
       <StyledMenu
@@ -104,15 +106,20 @@ const ProfileButton = () => {
           },
         }}
       >
-        <StyledMenuItem 
-          onClick={() => { 
-            window.location.href = "/admin/profile"; 
-            handleClose(); 
+        <StyledMenuItem
+          onClick={() => {
+            router.push("/admin/profile");
+            handleClose();
           }}
         >
           Go to Profile
         </StyledMenuItem>
+
+        <StyledMenuItem onClick={handleClose}>
+          <LogoutButton />
+        </StyledMenuItem>
       </StyledMenu>
+
     </>
   );
 };
