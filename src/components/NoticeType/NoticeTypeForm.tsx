@@ -18,6 +18,8 @@ import { NoticeTypeFormProps, NoticeTypeFormValues } from "@/types/noticeTypesIn
 import { AppWindow } from "lucide-react";
 import { User } from "@/services/userService";
 import { template } from "@/services/TemplateService";
+import {ClientAdminOnly} from "../auth/ClientRoleGuard";
+// import { useRole } from "@/hooks/useRole";
 
 interface ExtendedNoticeTypeFormProps extends NoticeTypeFormProps {
   users: User[];
@@ -58,6 +60,8 @@ export const NoticeTypeForm = ({
     template_content: string;
     id?: string;
   } | null>(null);
+
+  // const { isAdmin,hasRole } = useRole();
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -202,32 +206,34 @@ export const NoticeTypeForm = ({
           )}
         </Box>
 
-        <FormControl variant="outlined" sx={{ width: "70%" }} error={!!errors.assigned_to}>
-          <InputLabel id="assigned-to-label">Assigned To</InputLabel>
-          <Select
-            labelId="assigned-to-label"
-            label="Assigned To"
-            value={values.assigned_to || ""}
-            onChange={(e) =>
-              setValues((prev) => ({ ...prev, assigned_to: e.target.value || null }))
-            }
-            disabled={isSubmitting}
-          >
-            <MenuItem value="">
-              <em>None</em>
-            </MenuItem>
-            {users.map((user) => (
-              <MenuItem key={user.id} value={user.id}>
-                {`${user.first_name} ${user.last_name} (${user.email})`}
+        <ClientAdminOnly>
+          <FormControl variant="outlined" sx={{ width: "70%" }} error={!!errors.assigned_to}>
+            <InputLabel id="assigned-to-label">Assigned To</InputLabel>
+            <Select
+              labelId="assigned-to-label"
+              label="Assigned To"
+              value={values.assigned_to || ""}
+              onChange={(e) =>
+                setValues((prev) => ({ ...prev, assigned_to: e.target.value || null }))
+              }
+              disabled={isSubmitting}
+            >
+              <MenuItem value="">
+                <em>None</em>
               </MenuItem>
-            ))}
-          </Select>
-          {errors.assigned_to && (
-            <Typography color="error" variant="body2">
-              {errors.assigned_to}
-            </Typography>
-          )}
-        </FormControl>
+              {users.map((user) => (
+                <MenuItem key={user.id} value={user.id}>
+                  {`${user.first_name} ${user.last_name} (${user.email})`}
+                </MenuItem>
+              ))}
+            </Select>
+            {errors.assigned_to && (
+              <Typography color="error" variant="body2">
+                {errors.assigned_to}
+              </Typography>
+            )}
+          </FormControl>
+        </ClientAdminOnly>
 
         <DynamicFieldBuilder
           onSchemaChange={(schema) =>

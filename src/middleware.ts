@@ -19,6 +19,7 @@ const decodeJWT = (token: string): UserToken | null => {
 
 const roleBasedRoutes: Record<string, string[]> = {
   "/admin": ["admin"],
+  "/": ["user","admin"],
   "/user": ["user", "admin"],
 };
 
@@ -38,15 +39,6 @@ export async function middleware(req: NextRequest) {
   if (!userRole && req.nextUrl.pathname === "/") {
     console.log("⛔ No User Role - Redirecting to Login");
     return NextResponse.redirect(new URL("/auth/login", req.url));
-  }
-
-  if (userRole) {
-    console.log(
-      `🔀 User Role Found (${userRole}) - Redirecting to /${userRole}/`
-    );
-    if (req.nextUrl.pathname === "/") {
-      return NextResponse.redirect(new URL(`/${userRole}/`, req.url));
-    }
   }
 
   for (const [route, allowedRoles] of Object.entries(roleBasedRoutes)) {
