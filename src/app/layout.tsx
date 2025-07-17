@@ -76,7 +76,7 @@ const NAVIGATION: Navigation = [
     segment: "admin/reports",
   },
   {
-    title: "User Management",
+    title: "User Management",    //adminonly
     icon: <GroupIcon />,
     segment: "admin/users",
   },
