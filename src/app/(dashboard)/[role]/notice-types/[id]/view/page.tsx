@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { fetchNoticeTypeById } from "@/services/noticeService";
 import { NoticeType } from "@/types/noticeTypesInterface";
-import { NoticeTypeViewSkeleton } from "@/app/(dashboard)/admin/notice-types/[id]/view/NoticeTypeViewSkeleton";
+import { NoticeTypeViewSkeleton } from "@/app/(dashboard)/[role]/notice-types/[id]/view/NoticeTypeViewSkeleton";
 
 export default function NoticeTypeView() {
   const router = useRouter();

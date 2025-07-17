@@ -11,20 +11,20 @@ interface ClientRoleGuardProps {
 
 export default function ClientRoleGuard({ 
   allowedRoles, 
-  children,
+  children, 
   fallback = null,
   showLoader = true
 }: ClientRoleGuardProps) {
   const { userRole, loading } = useRole();
-  
+
   if (loading && showLoader) {
     return <div>Loading...</div>; // Or your loading spinner
   }
-  
+
   if (!userRole || !allowedRoles.includes(userRole)) {
     return <>{fallback}</>;
   }
-  
+
   return <>{children}</>;
 }
 

@@ -21,9 +21,9 @@ const decodeJWT = (token: string): UserToken | null => {
 export async function getCurrentUser(): Promise<UserToken | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get('accessToken')?.value;
-  
+
   if (!token) return null;
-  
+
   return decodeJWT(token);
 }
 
