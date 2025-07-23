@@ -359,7 +359,7 @@ export default function NoticePage() {
     <Container>
       <Button
         component={Link}
-        href="/dashboard/admin/notices/create"
+        href="/admin/notices/create"
         variant="outlined"
         color="secondary"
         size="small"
