@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { Container, Typography } from "@mui/material";
-// import NoticeForm from "@/components/notices/NoticeForm";
+import NoticeForm from "@/components/notices/NoticeForm";
 
 export default function EditNoticePage() {
   const { id } = useParams();
