@@ -1,98 +1,297 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "@/store";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  createNoticeThunk,
-  updateNoticeThunk,
-} from "@/store/slices/noticeSlice";
-import { TextField, Button, Box, Paper } from "@mui/material";
-const defaultLegalTemplate = `
-<b>NOTICE OF AGREEMENT</b><br/><br/>
-This Agreement is made on this <b>[DATE]</b>, by and between:<br/><br/>
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  SelectChangeEvent,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchUsersThunk } from "@/store/slices/usersSlice";
+import {
+  createIndividualNotice,
+  fetchNoticeTypesWithTransformedSchemas,
+} from "@/services/noticeService";
+import { TransformedNoticeType, SchemaField } from "@/types/noticeTypesInterface";
+import { useSnackbar } from "notistack";
+import { ClientAdminOnly } from "@/components/auth/ClientRoleGuard";
+import { useRole } from "@/hooks/useRole";
 
-<b>Party 1:</b> [Party 1 Name], residing at [Address]<br/>
-<b>Party 2:</b> [Party 2 Name], residing at [Address]<br/><br/>
+// Utility function to decode JWT and get user ID
+const getUserIdFromToken = (): string | null => {
+  if (typeof window === "undefined") return null;
 
-WHEREAS, the parties agree to the following terms:<br/><br/>
+  try {
+    const cookies = document.cookie.split(";");
+    const tokenCookie = cookies.find((cookie) =>
+      cookie.trim().startsWith("accessToken=")
+    );
+    if (!tokenCookie) return null;
 
-<b>1. Scope of Agreement</b><br/>
-This agreement covers the obligations and responsibilities of both parties.<br/><br/>
+    const token = tokenCookie.split("=")[1];
+    if (!token) return null;
 
-<b>2. Duration</b><br/>
-The agreement shall be valid from <b>[Start Date]</b> to <b>[End Date]</b>.<br/><br/>
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const decodedPayload = JSON.parse(atob(base64));
 
-<b>3. Governing Law</b><br/>
-This agreement shall be governed by the laws of [Jurisdiction].<br/><br/>
+    return decodedPayload.user_id || null;
+  } catch (error) {
+    console.error("Error decoding token:", error);
+    return null;
+  }
+};
 
-<b>Signed by:</b><br/><br/>
-Party 1: ____________________ Date: ___________<br/>
-Party 2: ____________________ Date: ___________
-`;
-interface NoticeFormProps {
-  initialData?: { id?: string; title: string; description: string };
-  isEdit?: boolean;
-}
+// Controller for fetching notice types
+const controller = {
+  async getNoticeTypes(): Promise<TransformedNoticeType[]> {
+    const all: TransformedNoticeType[] = [];
+    let page = 1;
+    let next: string | null = "";
+    do {
+      const res = await fetchNoticeTypesWithTransformedSchemas(page);
+      all.push(...res.results);
+      next = res.next;
+      page += 1;
+    } while (next);
+    return all;
+  },
+};
 
-const NoticeForm: React.FC<NoticeFormProps> = ({
-  initialData,
-  isEdit = false,
-}) => {
-  const dispatch = useDispatch<AppDispatch>();
+const NoticeForm: React.FC = () => {
+  const [noticeTypes, setNoticeTypes] = useState<TransformedNoticeType[]>([]);
+  const [selectedNoticeType, setSelectedNoticeType] = useState("");
+  const [dynamicData, setDynamicData] = useState<Record<string, string | number | boolean>>({});
+  const [userId, setUserId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [formData, setFormData] = useState({
-    title: initialData?.title || "",
-    description: initialData?.description || defaultLegalTemplate,
-  });
+  const dispatch = useAppDispatch();
+  const users = useAppSelector((state) => state.users.users);
+  const usersLoading = useAppSelector((state) => state.users.loading);
+  const { enqueueSnackbar } = useSnackbar();
+  const { userRole } = useRole();
 
+  // Fetch notice types and users, and auto-set user ID for non-admin users
   useEffect(() => {
-    if (initialData) {
-      setFormData(initialData);
-    }
-  }, [initialData]);
+    controller
+      .getNoticeTypes()
+      .then(setNoticeTypes)
+      .catch(() =>
+        enqueueSnackbar("Unable to fetch notice types. Please try again later.", {
+          variant: "error",
+        })
+      );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    dispatch(fetchUsersThunk(undefined));
+
+    if (userRole === "user") {
+      const currentUserId = getUserIdFromToken();
+      if (currentUserId) {
+        setUserId(currentUserId);
+      }
+    }
+  }, [dispatch, enqueueSnackbar, userRole]);
+
+  // Reset dynamic data when notice type changes
+  useEffect(() => {
+    setDynamicData({});
+    setErrors({});
+  }, [selectedNoticeType]);
+
+  // Handlers
+  const handleNoticeTypeChange = (e: SelectChangeEvent<string>): void => {
+    setSelectedNoticeType(e.target.value);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isEdit && initialData?.id) {
-      dispatch(updateNoticeThunk({ id: initialData.id, data: formData }));
+  const handleDynamicFieldChange = (
+    fieldName: string,
+    value: string,
+    fieldType: SchemaField["type"]
+  ): void => {
+    let parsedValue: string | number | boolean = value;
+
+    if (fieldType === "number") {
+      parsedValue = value ? parseFloat(value) : "";
+    } else if (fieldType === "boolean") {
+      parsedValue = value === "true";
+    } else if (fieldType === "date") {
+      parsedValue = value; // Keep as string, API expects YYYY-MM-DD
+    }
+
+    setDynamicData((prev) => ({ ...prev, [fieldName]: parsedValue }));
+
+    // Validate field
+    const schema = noticeTypes.find((t) => t.id === selectedNoticeType)?.dynamic_schema;
+    if (schema && schema[fieldName].required && !value) {
+      setErrors((prev) => ({ ...prev, [fieldName]: "This field is required" }));
     } else {
-      dispatch(createNoticeThunk(formData));
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      });
     }
   };
+
+  const resetForm = useCallback(() => {
+    setSelectedNoticeType("");
+    setUserId("");
+    setDynamicData({});
+    setErrors({});
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+
+    if (!selectedNoticeType) {
+      enqueueSnackbar("Please select a notice type.", { variant: "error" });
+      return;
+    }
+
+    let finalUserId = userId;
+    if (userRole === "user") {
+      finalUserId = getUserIdFromToken() || userId;
+    }
+
+    if (!finalUserId) {
+      enqueueSnackbar("Please select a user from the Created By dropdown.", {
+        variant: "error",
+      });
+      return;
+    }
+
+    // Validate required fields
+    const schema = noticeTypes.find((t) => t.id === selectedNoticeType)?.dynamic_schema;
+    const newErrors: Record<string, string> = {};
+    if (schema) {
+      Object.entries(schema).forEach(([fieldName, field]) => {
+        if (field.required && !dynamicData[fieldName]) {
+          newErrors[fieldName] = "This field is required";
+        }
+      });
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      enqueueSnackbar("Please fill all required fields.", { variant: "error" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await createIndividualNotice(selectedNoticeType, dynamicData, finalUserId);
+      enqueueSnackbar("Notice created successfully!", { variant: "success" });
+      resetForm();
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "An unexpected error occurred.";
+      enqueueSnackbar(errorMessage, { variant: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get the dynamic schema for the selected notice type
+  const selectedSchema = noticeTypes.find((t) => t.id === selectedNoticeType)?.dynamic_schema;
 
   return (
-    <Paper elevation={3} sx={{ padding: 3, maxWidth: 500, margin: "auto" }}>
-      <Box
-        component="form"
-        onSubmit={handleSubmit}
-        sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-      >
-        <TextField
-          name="title"
-          label="Title"
-          value={formData.title}
-          onChange={handleChange}
-          required
-        />
-        <TextField
-          name="description"
-          label="Description"
-          value={formData.description}
-          onChange={handleChange}
-          required
-          multiline
-          rows={20}
-        />
-        <Button type="submit" variant="contained" color="primary">
-          {isEdit ? "Update" : "Create"}
-        </Button>
-      </Box>
-    </Paper>
+    <Container maxWidth="sm">
+      <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          Create Notice
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {/* Notice Type Dropdown */}
+          <FormControl fullWidth required>
+            <InputLabel id="notice-type-label">Notice Type</InputLabel>
+            <Select
+              labelId="notice-type-label"
+              value={selectedNoticeType}
+              onChange={handleNoticeTypeChange}
+              disabled={loading}
+            >
+              {noticeTypes.map((nt) => (
+                <MenuItem key={nt.id} value={nt.id}>
+                  {nt.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Created By Dropdown (Admin Only) */}
+          <ClientAdminOnly>
+            <FormControl fullWidth required>
+              <InputLabel id="created-by-label">Created By</InputLabel>
+              <Select
+                labelId="created-by-label"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                disabled={loading || usersLoading}
+              >
+                {users.map((user) => (
+                  <MenuItem key={user.id} value={user.id}>
+                    {user.username}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </ClientAdminOnly>
+
+          {/* Dynamic Fields */}
+          {selectedSchema &&
+            Object.entries(selectedSchema).map(([fieldName, field]) => (
+              <TextField
+                key={fieldName}
+                label={`${field.label}${field.required ? " *" : ""}`}
+                value={dynamicData[fieldName] || ""}
+                onChange={(e) => handleDynamicFieldChange(fieldName, e.target.value, field.type)}
+                error={!!errors[fieldName]}
+                helperText={errors[fieldName]}
+                type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+                required={field.required}
+                disabled={loading}
+                fullWidth
+              />
+            ))}
+
+          {/* Action Buttons */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+            <Button variant="outlined" onClick={resetForm} disabled={loading}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={
+                loading ||
+                !selectedNoticeType ||
+                (userRole === "admin" && !userId) ||
+                Object.keys(errors).length > 0
+              }
+              startIcon={loading ? <CircularProgress size={20} /> : undefined}
+            >
+              Create Notice
+            </Button>
+          </Box>
+
+          {selectedSchema && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 2 }}>
+              Required fields are marked with an asterisk (*)
+            </Typography>
+          )}
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 

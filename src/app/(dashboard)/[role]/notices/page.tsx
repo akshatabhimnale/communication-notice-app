@@ -299,7 +299,7 @@ export default function NoticePage() {
         <div style={{ display: "flex", gap: "8px" }}>
           <Button
             component={Link}
-            href="/dashboard/admin/notices/edit/${params.row.id}"
+            href={`/admin/notices/edit/${params.row.id}`}
             color="primary"
             variant="contained"
             size="small"

@@ -36,32 +36,34 @@ const transformDynamicSchema = (
   apiSchema: DynamicSchema
 ): Record<string, SchemaField> => {
   console.log("Raw API Schema:", JSON.stringify(apiSchema, null, 2));
-  const fields = apiSchema.fields || {};
+  const fields = apiSchema.fields.fields || {};
   const transformed = Object.entries(fields).reduce((acc, [key, field]) => {
+    // Ensure field is typed as ApiSchemaField
+    const typedField = field as unknown as ApiSchemaField;
+    // Handle cases where key might contain commas (e.g., "field1, field2")
     if (key.includes(",")) {
       const subFields = key.split(",").map((f) => f.trim());
       subFields.forEach((subField) => {
         acc[subField] = {
           label: subField,
-          type:
-            field.type === "float"
+          type: typedField.type === "float"
               ? "number"
-              : field.type === "string"
+              : typedField.type === "string"
               ? "text"
-              : (field.type as "text" | "number" | "date" | "boolean"),
-          required: field.required,
+              : (typedField.type as "text" | "number" | "date" | "boolean"),
+          required: typedField.required,
         };
       });
     } else {
       acc[key] = {
-        label: field.label,
+        label: typedField.label,
         type:
-          field.type === "float"
+          typedField.type === "float"
             ? "number"
-            : field.type === "string"
+            : typedField.type === "string"
             ? "text"
-            : (field.type as "text" | "number" | "date" | "boolean"),
-        required: field.required,
+            : (typedField.type as "text" | "number" | "date" | "boolean"),
+        required: typedField.required,
       };
     }
     return acc;
