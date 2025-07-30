@@ -72,7 +72,7 @@ export default function EditNoticePage() {
     fieldName: string,
     value: string
   ) => {
-    let parsedValue: string | number | boolean = value;
+    const parsedValue: string | number | boolean = value;
     // Add type parsing if schema is available later; for now, keep as string
     setDynamicData((prev) => ({ ...prev, [fieldName]: parsedValue }));
 
