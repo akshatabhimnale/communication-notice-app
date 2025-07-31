@@ -16,7 +16,6 @@ export default function CreateNoticeType() {
   const { userRole } = useRole();
   const [orgId, setOrgId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [username, setUsername] = useState<string>("");
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingOrg, setIsLoadingOrg] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
@@ -36,9 +35,8 @@ export default function CreateNoticeType() {
       console.log("Organization ID fetched successfully:", organizationId);
       setOrgId(organizationId);
       setUserId(userProfile.id);
-      setUsername(userProfile.username || "Current User");
       if (userRole === "user") {
-        setUsers([{ id: userProfile.id, username: userProfile.username } as User]);
+        setUsers([{ id: userProfile.id } as User]);
       }
       setIsAuthenticated(true);
     } catch (err) {
@@ -47,7 +45,6 @@ export default function CreateNoticeType() {
       setError(message);
       setOrgId(null);
       setUserId(null);
-      setUsername("");
       setUsers([]);
       setIsAuthenticated(false);
     } finally {
@@ -58,7 +55,6 @@ export default function CreateNoticeType() {
   const fetchUserList = useCallback(async () => {
     if (userRole !== "admin") {
       console.log("Skipping fetchAllUsers for non-admin user.");
-      setUsers([]);
       setIsLoadingUsers(false);
       return;
     }
