@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
@@ -25,6 +24,7 @@ import { TransformedNoticeType, SchemaField } from "@/types/noticeTypesInterface
 import { useSnackbar } from "notistack";
 import { ClientAdminOnly } from "@/components/auth/ClientRoleGuard";
 import { useRole } from "@/hooks/useRole";
+import { useRouter } from "next/navigation";
 
 // Utility function to decode JWT and get user ID
 const getUserIdFromToken = (): string | null => {
@@ -74,15 +74,18 @@ const NoticeForm: React.FC = () => {
   const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const dispatch = useAppDispatch();
   const users = useAppSelector((state) => state.users.users);
   const usersLoading = useAppSelector((state) => state.users.loading);
   const { enqueueSnackbar } = useSnackbar();
   const { userRole } = useRole();
+  const router = useRouter();
 
   // Fetch notice types and users, and auto-set user ID for non-admin users
   useEffect(() => {
+    // Fetch notice types for all users
     controller
       .getNoticeTypes()
       .then(setNoticeTypes)
@@ -92,15 +95,27 @@ const NoticeForm: React.FC = () => {
         })
       );
 
-    dispatch(fetchUsersThunk(undefined));
+    // Fetch users only for admin
+    if (userRole === "admin") {
+      dispatch(fetchUsersThunk(undefined)).unwrap().catch((error) => {
+        enqueueSnackbar(`Failed to fetch users: ${error.message}`, { variant: "error" });
+      });
+    }
 
+    // Set user ID for non-admin users
     if (userRole === "user") {
       const currentUserId = getUserIdFromToken();
       if (currentUserId) {
         setUserId(currentUserId);
+        setIsAuthenticated(true);
+      } else {
+        enqueueSnackbar("Authentication failed. Please log in again.", { variant: "error" });
+        router.push("/auth/login");
       }
+    } else if (userRole === "admin") {
+      setIsAuthenticated(true);
     }
-  }, [dispatch, enqueueSnackbar, userRole]);
+  }, [dispatch, enqueueSnackbar, userRole, router]);
 
   // Reset dynamic data when notice type changes
   useEffect(() => {
@@ -145,10 +160,12 @@ const NoticeForm: React.FC = () => {
 
   const resetForm = useCallback(() => {
     setSelectedNoticeType("");
-    setUserId("");
+    if (userRole === "admin") {
+      setUserId("");
+    }
     setDynamicData({});
     setErrors({});
-  }, []);
+  }, [userRole]);
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -164,9 +181,15 @@ const NoticeForm: React.FC = () => {
     }
 
     if (!finalUserId) {
-      enqueueSnackbar("Please select a user from the Created By dropdown.", {
-        variant: "error",
-      });
+      enqueueSnackbar(
+        userRole === "admin"
+          ? "Please select a user from the Created By dropdown."
+          : "User authentication failed. Please log in again.",
+        { variant: "error" }
+      );
+      if (userRole === "user") {
+        router.push("/auth/login");
+      }
       return;
     }
 
@@ -203,6 +226,19 @@ const NoticeForm: React.FC = () => {
 
   // Get the dynamic schema for the selected notice type
   const selectedSchema = noticeTypes.find((t) => t.id === selectedNoticeType)?.dynamic_schema;
+
+  if (!isAuthenticated) {
+    return (
+      <Container maxWidth="sm">
+        <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Authenticating...
+          </Typography>
+          <CircularProgress />
+        </Paper>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="sm">
@@ -246,6 +282,13 @@ const NoticeForm: React.FC = () => {
               </Select>
             </FormControl>
           </ClientAdminOnly>
+
+          {/* Display User ID for Non-Admin */}
+          {userRole === "user" && userId && (
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Created By: {users.find((u) => u.id === userId)?.username || "Current User"}
+            </Typography>
+          )}
 
           {/* Dynamic Fields */}
           {selectedSchema &&

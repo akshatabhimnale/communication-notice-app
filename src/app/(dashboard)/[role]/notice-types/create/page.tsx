@@ -9,17 +9,22 @@ import { Container, CircularProgress, Typography, Button } from "@mui/material";
 import { NoticeTypeFormValues } from "@/types/noticeTypesInterface";
 import { NoticeTypeFormSkeleton } from "@/components/NoticeType/NoticeTypeFormSkeleton";
 import { User } from "@/services/userService";
+import { useRole } from "@/hooks/useRole";
 
 export default function CreateNoticeType() {
   const router = useRouter();
+  const { userRole } = useRole();
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [username, setUsername] = useState<string>("");
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingOrg, setIsLoadingOrg] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOrganizationId = useCallback(async () => {
-    console.log("Fetching organization ID...");
+  const fetchUserDetails = useCallback(async () => {
+    console.log("Fetching user details...");
     setIsLoadingOrg(true);
     setError(null);
     try {
@@ -30,17 +35,33 @@ export default function CreateNoticeType() {
       }
       console.log("Organization ID fetched successfully:", organizationId);
       setOrgId(organizationId);
+      setUserId(userProfile.id);
+      setUsername(userProfile.username || "Current User");
+      if (userRole === "user") {
+        setUsers([{ id: userProfile.id, username: userProfile.username } as User]);
+      }
+      setIsAuthenticated(true);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load organization information.";
-      console.error("Error fetching organization ID:", err);
+      const message = err instanceof Error ? err.message : "Failed to load user information.";
+      console.error("Error fetching user details:", err);
       setError(message);
       setOrgId(null);
+      setUserId(null);
+      setUsername("");
+      setUsers([]);
+      setIsAuthenticated(false);
     } finally {
       setIsLoadingOrg(false);
     }
-  }, []);
+  }, [userRole]);
 
   const fetchUserList = useCallback(async () => {
+    if (userRole !== "admin") {
+      console.log("Skipping fetchAllUsers for non-admin user.");
+      setUsers([]);
+      setIsLoadingUsers(false);
+      return;
+    }
     console.log("Fetching all users...");
     setIsLoadingUsers(true);
     setError(null);
@@ -56,12 +77,12 @@ export default function CreateNoticeType() {
     } finally {
       setIsLoadingUsers(false);
     }
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
-    fetchOrganizationId();
+    fetchUserDetails();
     fetchUserList();
-  }, [fetchOrganizationId, fetchUserList]);
+  }, [fetchUserDetails, fetchUserList]);
 
   const handleSubmit = async (
     formValues: Omit<NoticeTypeFormValues, "org_id">,
@@ -70,13 +91,13 @@ export default function CreateNoticeType() {
     console.log("handleSubmit triggered. FormValues:", formValues, "TemplateData:", templateData);
     setError(null);
 
-    if (!orgId) {
-      const errMsg = "Organization ID is missing. Cannot create notice type.";
+    if (!orgId || !userId) {
+      const errMsg = "Organization ID or User ID is missing. Cannot create notice type.";
       console.error("handleSubmit Error:", errMsg);
       setError(errMsg);
       return;
     }
-    console.log("handleSubmit: Organization ID confirmed:", orgId);
+    console.log("handleSubmit: Organization ID and User ID confirmed:", orgId, userId);
 
     try {
       const noticeTypePayload = { ...formValues, org_id: orgId };
@@ -97,8 +118,9 @@ export default function CreateNoticeType() {
         console.log("handleSubmit: No valid template data provided, skipping template creation.");
       }
 
-      console.log("handleSubmit: Process successful. Redirecting to /admin/notice-types");
-      router.push("/admin/notice-types");
+      const redirectPath = userRole === "admin" ? "/admin/notice-types" : "/user/notice-types";
+      console.log(`handleSubmit: Process successful. Redirecting to ${redirectPath}`);
+      router.push(redirectPath);
     } catch (err) {
       const message = err instanceof Error ? err.message : "An unexpected error occurred during creation.";
       console.error("Error creating notice type or template:", err);
@@ -107,19 +129,34 @@ export default function CreateNoticeType() {
   };
 
   const handleRetryFetch = () => {
-    fetchOrganizationId();
-    fetchUserList();
+    fetchUserDetails();
+    if (userRole === "admin") {
+      fetchUserList();
+    }
   };
 
-  if (isLoadingOrg) {
+  if (isLoadingOrg || (userRole === "admin" && isLoadingUsers)) {
     return <NoticeTypeFormSkeleton />;
+  }
+
+  if (!isAuthenticated) {
+    console.log("User not authenticated, redirecting to /auth/login");
+    router.push("/auth/login");
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography color="error" gutterBottom>
+          Redirecting to login...
+        </Typography>
+        <CircularProgress />
+      </Container>
+    );
   }
 
   if (error && !orgId) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography color="error" gutterBottom>
-          Error loading organization: {error}
+          Error loading user details: {error}
         </Typography>
         <Button
           variant="contained"
@@ -133,29 +170,21 @@ export default function CreateNoticeType() {
     );
   }
 
-  if (orgId) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        {error && (
-          <Typography color="error" gutterBottom sx={{ mb: 2 }}>
-            {error} {users.length === 0 ? "(User list unavailable, but you can still create the notice type)" : ""}
-          </Typography>
-        )}
-        <NoticeTypeForm
-          onSubmit={handleSubmit}
-          onCancel={() => router.push("/admin/notice-types")}
-          mode="create"
-          orgId={orgId}
-          users={users} templates={[]}        />
-      </Container>
-    );
-  }
-
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography color="error">
-        Unable to load the form. Organization ID might be missing.
-      </Typography>
+      {error && userRole === "admin" && (
+        <Typography color="error" gutterBottom sx={{ mb: 2 }}>
+          {error} (User list unavailable, but you can still create the notice type)
+        </Typography>
+      )}
+      <NoticeTypeForm
+        onSubmit={handleSubmit}
+        onCancel={() => router.push(userRole === "admin" ? "/admin/notice-types" : "/user/notice-types")}
+        mode="create"
+        orgId={orgId!}
+        users={users}
+        templates={[]}
+      />
     </Container>
   );
 }

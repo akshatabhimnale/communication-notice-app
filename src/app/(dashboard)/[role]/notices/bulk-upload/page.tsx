@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -19,6 +20,7 @@ import {
   createIndividualNotice,
   fetchNoticeTypesWithTransformedSchemas,
 } from "@/services/noticeService";
+import { fetchUserProfile } from "@/services/userService";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchUsersThunk } from "@/store/slices/usersSlice";
 import {
@@ -28,32 +30,9 @@ import {
 import { useSnackbar } from "notistack";
 import { ClientAdminOnly } from "@/components/auth/ClientRoleGuard";
 import { useRole } from "@/hooks/useRole";
-// ---------- helpers ---------------------------------------------------------
+import { useRouter } from "next/navigation";
 
-// Utility function to decode JWT and get user ID
-const getUserIdFromToken = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  
-  try {
-    // Get token from document.cookie
-    const cookies = document.cookie.split(';');
-    const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('accessToken='));
-    if (!tokenCookie) return null;
-    
-    const token = tokenCookie.split('=')[1];
-    if (!token) return null;
-    
-    // Decode JWT token
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const decodedPayload = JSON.parse(atob(base64));
-    
-    return decodedPayload.user_id || null;
-  } catch (error) {
-    console.error('Error decoding token:', error);
-    return null;
-  }
-};
+// ---------- helpers ---------------------------------------------------------
 
 type FileValidation =
   | { ok: true; file: File }
@@ -116,44 +95,75 @@ const BulkUpload: React.FC = () => {
   const [validatedFile, setValidatedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState("");
+  const [username, setUsername] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const dispatch = useAppDispatch();
   const users = useAppSelector((state) => state.users.users);
   const usersLoading = useAppSelector((state) => state.users.loading);
   const { enqueueSnackbar } = useSnackbar();
   const { userRole } = useRole();
+  const router = useRouter();
 
   // ---------- side-effects --------------------------------------------------
   useEffect(() => {
+    // Fetch notice types for all users
     controller
       .getNoticeTypes()
       .then(setNoticeTypes)
-      .catch(() => 
+      .catch(() =>
         enqueueSnackbar("Unable to fetch notice types. Please try again later.", {
-          variant: "error", 
+          variant: "error",
         })
       );
 
-    dispatch(fetchUsersThunk(undefined));
-    
-    // Auto-set user ID for non-admin users
-    if (userRole === 'user') {
-      const currentUserId = getUserIdFromToken();
-      if (currentUserId) {
-        setUserId(currentUserId);
-      }
+    // Fetch users only for admin
+    if (userRole === "admin") {
+      dispatch(fetchUsersThunk(undefined)).unwrap().catch((error) => {
+        enqueueSnackbar(`Failed to fetch users: ${error.message}`, {
+          variant: "error",
+        });
+      });
     }
-  }, [dispatch, enqueueSnackbar, userRole]);
+
+    // Set user ID and username for non-admin users
+    if (userRole === "user") {
+      fetchUserProfile()
+        .then((profile) => {
+          if (profile.id) {
+            setUserId(profile.id);
+            setUsername(profile.username || "Current User");
+            setIsAuthenticated(true);
+          } else {
+            enqueueSnackbar("Authentication failed: No user ID found. Please log in again.", {
+              variant: "error",
+            });
+            router.push("/auth/login");
+          }
+        })
+        .catch((error) => {
+          enqueueSnackbar(`Authentication error: ${error.message}`, {
+            variant: "error",
+          });
+          router.push("/auth/login");
+        });
+    } else if (userRole === "admin") {
+      setIsAuthenticated(true);
+    }
+  }, [dispatch, enqueueSnackbar, userRole, router]);
 
   // ---------- handlers ------------------------------------------------------
   const resetForm = useCallback(() => {
     setSelectedNoticeType("");
-    setUserId("");
+    if (userRole === "admin") {
+      setUserId("");
+    }
     setValidatedFile(null);
     // Clear the hidden input
     const input = document.getElementById("file-upload") as HTMLInputElement;
     if (input) input.value = "";
-  }, []);
+  }, [userRole]);
+
   const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ): Promise<void> => {
@@ -168,47 +178,60 @@ const BulkUpload: React.FC = () => {
 
     setValidatedFile(validation.file);
   };
+
   const handleNoticeTypeChange = (e: SelectChangeEvent<string>): void => {
     setSelectedNoticeType(e.target.value);
   };
+
   const handleUpload = async (): Promise<void> => {
     if (!selectedNoticeType) {
       enqueueSnackbar("Please select a notice type.", { variant: "error" });
       return;
     }
     if (!validatedFile) {
-      enqueueSnackbar("Please add a valid file before uploading.", { variant: "error" });
-      return;
-    }
-    
-    // For admin users, check if userId is selected. For regular users, it's auto-set
-    let finalUserId = userId;
-    if (userRole === 'user') {
-      finalUserId = getUserIdFromToken() || userId;
-    }
-    
-    if (!finalUserId) {
-      enqueueSnackbar("Please select a user from the Created By dropdown.", { variant: "error" });
+      enqueueSnackbar("Please add a valid file before uploading.", {
+        variant: "error",
+      });
       return;
     }
 
-    setLoading(true);    try {
+    let finalUserId = userId;
+    if (userRole === "user") {
+      const profile = await fetchUserProfile().catch(() => null);
+      finalUserId = profile?.id || userId;
+    }
+
+    if (!finalUserId) {
+      enqueueSnackbar(
+        userRole === "admin"
+          ? "Please select a user from the Created By dropdown."
+          : "User authentication failed. Please log in again.",
+        { variant: "error" }
+      );
+      if (userRole === "user") {
+        router.push("/auth/login");
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
       // Step 1: Upload file and get dynamic data
-      const bulkUploadResponse = await bulkUploadFile(validatedFile, selectedNoticeType);
-      
-      // Debug: Log the bulk upload response
+      const bulkUploadResponse = await bulkUploadFile(
+        validatedFile,
+        selectedNoticeType,
+      );
+
       console.warn("Bulk upload response:", bulkUploadResponse);
-        if (!bulkUploadResponse.success) {
+      if (!bulkUploadResponse.success) {
         throw new Error("Failed to process the uploaded file");
       }
 
-      // Updated: Access dynamic_data from the first item in the data array
       const dynamicDataArray = bulkUploadResponse.data[0]?.dynamic_data;
-      
-      // Debug: Log the dynamic data array
+
       console.log("Dynamic data array:", dynamicDataArray);
       console.log("First item structure:", dynamicDataArray?.[0]);
-      
+
       if (!dynamicDataArray || dynamicDataArray.length === 0) {
         throw new Error("No valid data found in the uploaded file");
       }
@@ -221,7 +244,11 @@ const BulkUpload: React.FC = () => {
       for (let i = 0; i < dynamicDataArray.length; i++) {
         try {
           console.log(`Creating notice ${i + 1} with data:`, dynamicDataArray[i]);
-          await createIndividualNotice(selectedNoticeType, dynamicDataArray[i], finalUserId);
+          await createIndividualNotice(
+            selectedNoticeType,
+            dynamicDataArray[i],
+            finalUserId,
+          );
           createdCount++;
         } catch (error) {
           failedCount++;
@@ -234,31 +261,41 @@ const BulkUpload: React.FC = () => {
       // Show results
       if (createdCount > 0) {
         const successMessage = `Successfully created ${createdCount} notices.`;
-        const failureMessage = failedCount > 0 
-          ? ` ${failedCount} failed: ${failedErrors.slice(0, 3).join("; ")}${failedErrors.length > 3 ? "..." : ""}`
-          : "";
-        
-        enqueueSnackbar(successMessage + failureMessage, { 
+        const failureMessage =
+          failedCount > 0
+            ? ` ${failedCount} failed: ${failedErrors
+                .slice(0, 3)
+                .join("; ")}${failedErrors.length > 3 ? "..." : ""}`
+            : "";
+
+        enqueueSnackbar(successMessage + failureMessage, {
           variant: createdCount > failedCount ? "success" : "warning",
-          autoHideDuration: 5000
+          autoHideDuration: 5000,
         });
-        
+
         if (failedCount === 0) {
           resetForm();
         }
       } else {
-        enqueueSnackbar(`All ${failedCount} notices failed to create: ${failedErrors.slice(0, 2).join("; ")}`, {
-          variant: "error",
-          autoHideDuration: 5000
-        });
+        enqueueSnackbar(
+          `All ${failedCount} notices failed to create: ${failedErrors
+            .slice(0, 2)
+            .join("; ")}`,
+          {
+            variant: "error",
+            autoHideDuration: 5000,
+          },
+        );
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred during upload.";
+      const errorMessage =
+        err instanceof Error ? err.message : "An unexpected error occurred during upload.";
       enqueueSnackbar(errorMessage, { variant: "error" });
     } finally {
       setLoading(false);
     }
   };
+
   // ---------- memoised values ----------------------------------------------
 
   const selectedSchema = useMemo(
@@ -268,13 +305,26 @@ const BulkUpload: React.FC = () => {
 
   // ---------- render --------------------------------------------------------
 
+  if (!isAuthenticated) {
+    return (
+      <Container maxWidth="sm">
+        <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Authenticating...
+          </Typography>
+          <CircularProgress />
+        </Paper>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="sm">
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
         <Typography variant="h5" gutterBottom>
           Bulk Notice Upload
         </Typography>
-       {/* -----------------NoticeID dropdown---------------- */}
+        {/* -----------------Notice Type dropdown---------------- */}
         <FormControl fullWidth sx={{ mb: 2 }} required>
           <InputLabel id="notice-type-label">Notice Type</InputLabel>
           <Select
@@ -290,12 +340,12 @@ const BulkUpload: React.FC = () => {
             ))}
           </Select>
         </FormControl>
-    {/* -----------------Username dropdown---------------- */}
+        {/* -----------------Username dropdown (admin only)---------------- */}
         <ClientAdminOnly>
           <FormControl fullWidth sx={{ mb: 2 }} required>
             <InputLabel id="created-by-label">Created By</InputLabel>
             <Select
-              labelId="created-by-label" 
+              labelId="created-by-label"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               disabled={loading || usersLoading}
@@ -308,6 +358,12 @@ const BulkUpload: React.FC = () => {
             </Select>
           </FormControl>
         </ClientAdminOnly>
+        {/* -----------------Display username for non-admin---------------- */}
+        {userRole === "user" && userId && (
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Created By: {username}
+          </Typography>
+        )}
 
         {/* Drag-and-Drop area doubles as file input label */}
         <Box
@@ -329,9 +385,7 @@ const BulkUpload: React.FC = () => {
               target: { files: droppedFile ? [droppedFile] : null },
             } as unknown as React.ChangeEvent<HTMLInputElement>);
           }}
-          onClick={() =>
-            document.getElementById("file-upload")?.click()
-          }
+          onClick={() => document.getElementById("file-upload")?.click()}
         >
           <Typography variant="body2">
             {validatedFile
@@ -358,10 +412,10 @@ const BulkUpload: React.FC = () => {
             variant="contained"
             onClick={handleUpload}
             disabled={
-              loading || 
-              !validatedFile || 
-              !selectedNoticeType || 
-              (userRole === 'admin' && !userId) // Only require userId selection for admin users
+              loading ||
+              !validatedFile ||
+              !selectedNoticeType ||
+              (userRole === "admin" && !userId)
             }
             startIcon={loading ? <CircularProgress size={20} /> : undefined}
           >
