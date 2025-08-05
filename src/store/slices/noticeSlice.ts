@@ -4,7 +4,7 @@ import {
   fetchNotices,
   updateNotice,
 } from "@/services/noticeService";
-import {Notice} from "@/types/noticeTypesInterface";
+import { Notice } from "@/types/noticeTypesInterface";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface NoticeState {
@@ -21,12 +21,12 @@ const initialState: NoticeState = {
 
 export const fetchNoticesThunk = createAsyncThunk(
   "notice/fetchAll",
-  async (_, { rejectWithValue }) => {
+  async (params: { user_id?: string; notice_type?: string }, { rejectWithValue }) => {
     try {
-      return await fetchNotices();
+      return await fetchNotices(params);
     } catch (error: unknown) {
       const err = error as { message?: string };
-      return rejectWithValue(err.message || "Failed to fetch notice-types");
+      return rejectWithValue(err.message || "Failed to fetch notices");
     }
   }
 );
@@ -38,7 +38,7 @@ export const createNoticeThunk = createAsyncThunk(
       return await createNotice(data);
     } catch (error: unknown) {
       const err = error as { message?: string };
-      return rejectWithValue(err.message || "Failed to create notice-type");
+      return rejectWithValue(err.message || "Failed to create notice");
     }
   }
 );
@@ -50,7 +50,7 @@ export const updateNoticeThunk = createAsyncThunk(
       return await updateNotice(id, data);
     } catch (error: unknown) {
       const err = error as { message?: string };
-      return rejectWithValue(err.message || "Failed to update notice-type");
+      return rejectWithValue(err.message || "Failed to update notice");
     }
   }
 );
@@ -63,7 +63,7 @@ export const deleteNoticeThunk = createAsyncThunk(
       return id;
     } catch (error: unknown) {
       const err = error as { message?: string };
-      return rejectWithValue(err.message || "Failed to delete notice-type");
+      return rejectWithValue(err.message || "Failed to delete notice");
     }
   }
 );
@@ -89,7 +89,6 @@ const noticeSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-
       .addCase(createNoticeThunk.pending, (state) => {
         state.loading = true;
       })
@@ -104,7 +103,6 @@ const noticeSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-
       .addCase(updateNoticeThunk.pending, (state) => {
         state.loading = true;
       })
@@ -124,7 +122,6 @@ const noticeSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-
       .addCase(deleteNoticeThunk.pending, (state) => {
         state.loading = true;
       })
