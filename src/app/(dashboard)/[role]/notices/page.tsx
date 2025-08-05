@@ -27,6 +27,7 @@ import { AxiosError } from "axios";
 import { fetchAllUsers } from "@/services/userService";
 import { fetchNoticeTypesWithTransformedSchemas } from "@/services/noticeService";
 import { SchemaField } from "@/types/noticeTypesInterface";
+import { usePathname } from "next/navigation";
 
 interface Recipient {
   name?: string;
@@ -91,6 +92,7 @@ export default function NoticePage() {
   const { notices, loading, error } = useSelector(
     (state: RootState) => state.notice
   );
+  const pathname = usePathname();
 
   const [paginationModel, setPaginationModel] = useState({
     pageSize: 10,
@@ -103,18 +105,20 @@ export default function NoticePage() {
   const [users, setUsers] = useState<User[]>([]);
   const [noticeTypes, setNoticeTypes] = useState<NoticeType[]>([]);
 
-  // Fetch all users
+  // Fetch all users (only needed for admin)
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const usersData = await fetchAllUsers();
-        setUsers(usersData);
-      } catch (err) {
-        console.error("Error fetching users:", err);
-      }
-    };
-    fetchInitialData();
-  }, []);
+    if (pathname?.startsWith("/admin")) {
+      const fetchInitialData = async () => {
+        try {
+          const usersData = await fetchAllUsers();
+          setUsers(usersData);
+        } catch (err) {
+          console.error("Error fetching users:", err);
+        }
+      };
+      fetchInitialData();
+    }
+  }, [pathname]);
 
   // Fetch all notice types
   useEffect(() => {
@@ -140,20 +144,17 @@ export default function NoticePage() {
 
   // Fetch notices with filters
   useEffect(() => {
-    const fetchNotices = async () => {
-      const params: Record<string, string | null> = {};
-      if (selectedUserId) params["user_id"] = selectedUserId;
-      if (selectedNoticeType) params["notice_type"] = selectedNoticeType;
+    const params: Record<string, string | null> = {};
+    if (selectedUserId) params["user_id"] = selectedUserId;
+    if (selectedNoticeType) params["notice_type"] = selectedNoticeType;
 
-      dispatch(fetchNoticesThunk(params))
-        .then((res) => {
-          console.log("Fetched notices:", res.payload);
-        })
-        .catch((err) => {
-          console.error("Error fetching notices:", err);
-        });
-    };
-    fetchNotices();
+    dispatch(fetchNoticesThunk(params))
+      .then((res) => {
+        console.log("Fetched notices:", res.payload);
+      })
+      .catch((err) => {
+        console.error("Error fetching notices:", err);
+      });
   }, [dispatch, selectedUserId, selectedNoticeType]);
 
   const handleDelete = (id: string) => {
@@ -360,24 +361,28 @@ export default function NoticePage() {
       filterable: false,
       renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: "flex", gap: "8px" }}>
-          <Button
-            component={Link}
-            href={`/admin/notices/edit/${params.row.id}`}
-            color="primary"
-            variant="contained"
-            size="small"
-            startIcon={<Edit size={16} />}
-          >
-            Edit
-          </Button>
-          <Button
-            color="error"
-            variant="text"
-            size="small"
-            onClick={() => handleDelete(params.row.id)}
-          >
-            <Trash2 size={16} />
-          </Button>
+          {pathname?.startsWith("/admin") && (
+            <>
+              <Button
+                component={Link}
+                href={`/admin/notices/edit/${params.row.id}`}
+                color="primary"
+                variant="contained"
+                size="small"
+                startIcon={<Edit size={16} />}
+              >
+                Edit
+              </Button>
+              <Button
+                color="error"
+                variant="text"
+                size="small"
+                onClick={() => handleDelete(params.row.id)}
+              >
+                <Trash2 size={16} />
+              </Button>
+            </>
+          )}
           <Button
             color="inherit"
             variant="text"
@@ -417,62 +422,68 @@ export default function NoticePage() {
 
   return (
     <Container>
-      <Box sx={{ mb: 2, display: "flex", gap: 2, alignItems: "center" }}>
+      <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          {pathname?.startsWith("/admin") && (
+            <Autocomplete
+              options={users}
+              getOptionLabel={(option) => `${option.first_name} ${option.last_name} (${option.email})`}
+              value={users.find((u) => u.id === selectedUserId) || null}
+              onChange={(_, newValue) => setSelectedUserId(newValue?.id || null)}
+              inputValue={inputUserValue}
+              onInputChange={(_, newInputValue) => setInputUserValue(newInputValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Filter by User"
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search size={16} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ minWidth: 200 }}
+                />
+              )}
+            />
+          )}
+          <Autocomplete
+            options={noticeTypes}
+            getOptionLabel={(option) => option.name}
+            value={noticeTypes.find((nt) => nt.id === selectedNoticeType) || null}
+            onChange={(_, newValue) => setSelectedNoticeType(newValue?.id || null)}
+            inputValue={inputNoticeTypeValue}
+            onInputChange={(_, newInputValue) => setInputNoticeTypeValue(newInputValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Filter by Notice Type"
+                size="small"
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={16} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ minWidth: 200 }}
+              />
+            )}
+          />
+        </Box>
         <Button
           component={Link}
-          href="/admin/notices/create"
-          variant="outlined"
-          color="secondary"
-          size="small"
+          href={pathname?.startsWith("/admin") ? "/admin/notices/create" : "/user/notices/create"}
+          variant="contained"
+          color="primary"
+          size="medium"
         >
           Create Notice
         </Button>
-        <Autocomplete
-          options={users}
-          getOptionLabel={(option) => `${option.first_name} ${option.last_name} (${option.email})`}
-          value={users.find((u) => u.id === selectedUserId) || null}
-          onChange={(_, newValue) => setSelectedUserId(newValue?.id || null)}
-          inputValue={inputUserValue}
-          onInputChange={(_, newInputValue) => setInputUserValue(newInputValue)}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Filter by User"
-              InputProps={{
-                ...params.InputProps,
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search size={16} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ minWidth: 200 }}
-            />
-          )}
-        />
-        <Autocomplete
-          options={noticeTypes}
-          getOptionLabel={(option) => option.name}
-          value={noticeTypes.find((nt) => nt.id === selectedNoticeType) || null}
-          onChange={(_, newValue) => setSelectedNoticeType(newValue?.id || null)}
-          inputValue={inputNoticeTypeValue}
-          onInputChange={(_, newInputValue) => setInputNoticeTypeValue(newInputValue)}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Filter by Notice Type"
-              InputProps={{
-                ...params.InputProps,
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search size={16} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ minWidth: 200 }}
-            />
-          )}
-        />
       </Box>
 
       <Box sx={{ width: "100%" }}>
