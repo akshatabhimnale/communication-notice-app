@@ -120,7 +120,8 @@ export const fetchNotices = async (params: { user_id?: string; notice_type?: str
   try {
     // Construct query string from params
     const queryString = new URLSearchParams(
-      Object.entries(params).filter(([_, v]) => v != null)
+    
+      Object.entries(params).filter(([, v]) => v != null)
     ).toString();
     const url = `/notices/${queryString ? `?${queryString}` : ""}`;
     const response = await noticeApiClient.get<PaginatedNoticeResponse>(url);
