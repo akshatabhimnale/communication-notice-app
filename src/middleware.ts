@@ -65,12 +65,22 @@ export async function middleware(req: NextRequest) {
     console.log("🔄 Redirecting user from admin dashboard to user dashboard");
     return NextResponse.redirect(new URL("/user/dashboard", req.url));
   }
+  if (path.startsWith("/admin/notices")) {
+    console.log("🔄 Redirecting user from admin notices to user notices");
+    return NextResponse.redirect(new URL(path.replace("/admin", "/user"), req.url));
+  }
+   if (path.startsWith("/admin/profile")) {
+    console.log("🔄 Redirecting user from admin profile to user profile");
+    return NextResponse.redirect(new URL(path.replace("/admin", "/user"), req.url));
+  }
 
   // Allowed user-specific routes
   const allowedUserRoutes = [
     "/user/dashboard",
     "/user/notice-types",
     "/user/settings",
+    "/user/notices",
+    "/user/profile",
   ];
   if (allowedUserRoutes.some(route => path.startsWith(route))) {
     return NextResponse.next();

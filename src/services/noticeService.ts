@@ -36,32 +36,34 @@ const transformDynamicSchema = (
   apiSchema: DynamicSchema
 ): Record<string, SchemaField> => {
   console.log("Raw API Schema:", JSON.stringify(apiSchema, null, 2));
-  const fields = apiSchema.fields || {};
+  const fields = apiSchema.fields.fields || {};
   const transformed = Object.entries(fields).reduce((acc, [key, field]) => {
+    // Ensure field is typed as ApiSchemaField
+    const typedField = field as unknown as ApiSchemaField;
+    // Handle cases where key might contain commas (e.g., "field1, field2")
     if (key.includes(",")) {
       const subFields = key.split(",").map((f) => f.trim());
       subFields.forEach((subField) => {
         acc[subField] = {
           label: subField,
-          type:
-            field.type === "float"
+          type: typedField.type === "float"
               ? "number"
-              : field.type === "string"
+              : typedField.type === "string"
               ? "text"
-              : (field.type as "text" | "number" | "date" | "boolean"),
-          required: field.required,
+              : (typedField.type as "text" | "number" | "date" | "boolean"),
+          required: typedField.required,
         };
       });
     } else {
       acc[key] = {
-        label: field.label,
+        label: typedField.label,
         type:
-          field.type === "float"
+          typedField.type === "float"
             ? "number"
-            : field.type === "string"
+            : typedField.type === "string"
             ? "text"
-            : (field.type as "text" | "number" | "date" | "boolean"),
-        required: field.required,
+            : (typedField.type as "text" | "number" | "date" | "boolean"),
+        required: typedField.required,
       };
     }
     return acc;
@@ -81,13 +83,48 @@ const inferFieldType = (
   return "text";
 };
 
-export const fetchNotices = async () => {
+// export const fetchNotices = async () => {
+//   const token = getTokenFromCookie();
+//   if (!token) {
+//     throw new Error("No authentication token found. Please log in.");
+//   }
+//   try {
+//     const response = await noticeApiClient.get<PaginatedNoticeResponse>("/notices/");
+//     return response.data.results;
+//   } catch (err: unknown) {
+//     if (err instanceof AxiosError) {
+//       console.error("Full error:", err.response?.data, err.config);
+//       if (err.response?.status === 401) {
+//         clearTokenCookie();
+//         throw new Error(
+//           "Authentication failed. Your session may have expired. Please log in again."
+//         );
+//       }
+//       throw new Error(
+//         err.response
+//           ? `API Error ${err.response.status}: ${JSON.stringify(
+//               err.response.data
+//             )}`
+//           : "Network Error: Unable to reach the server"
+//       );
+//     }
+//     throw new Error("An unexpected error occurred");
+//   }
+// };
+
+export const fetchNotices = async (params: { user_id?: string; notice_type?: string } = {}) => {
   const token = getTokenFromCookie();
   if (!token) {
     throw new Error("No authentication token found. Please log in.");
   }
   try {
-    const response = await noticeApiClient.get<PaginatedNoticeResponse>("/notices/");
+    // Construct query string from params
+    const queryString = new URLSearchParams(
+    
+      Object.entries(params).filter(([, v]) => v != null)
+    ).toString();
+    const url = `/notices/${queryString ? `?${queryString}` : ""}`;
+    const response = await noticeApiClient.get<PaginatedNoticeResponse>(url);
     return response.data.results;
   } catch (err: unknown) {
     if (err instanceof AxiosError) {

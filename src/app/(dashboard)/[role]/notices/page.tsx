@@ -13,14 +13,21 @@ import {
   Skeleton,
   Box,
   Typography,
+  Autocomplete,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
-import { Trash2, Edit, Download } from "lucide-react";
+import { Trash2, Edit, Download, Search } from "lucide-react";
 import jsPDF from "jspdf";
 import noticeApiClient from "@/services/apiClients/noticeApiClient";
 import { getTokenFromCookie, clearTokenCookie } from "@/services/userService";
 import { AxiosError } from "axios";
+import { fetchAllUsers } from "@/services/userService";
+import { fetchNoticeTypesWithTransformedSchemas } from "@/services/noticeService";
+import { SchemaField } from "@/types/noticeTypesInterface";
+import { usePathname } from "next/navigation";
 
 interface Recipient {
   name?: string;
@@ -35,8 +42,8 @@ interface Notice {
   dynamic_data?: {
     recipients?: Recipient[] | string[];
     templateContent?: string;
-    schema?: unknown; // Replaced any with unknown
-    [key: string]: unknown; // Replaced any with unknown
+    schema?: unknown;
+    [key: string]: unknown;
   };
   created_by?: string;
   status?: string;
@@ -48,8 +55,36 @@ interface Notice {
 interface ApiResponse {
   success: boolean;
   data: Notice;
-  errors: Record<string, string[]>; // Replaced any with string[]
-  meta: Record<string, string | number | boolean>; // Replaced any with specific types
+  errors: Record<string, string[]>;
+  meta: Record<string, string | number | boolean>;
+}
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  role: string;
+  organization: {
+    id: string;
+    name: string;
+    address: string;
+    phone: string;
+    created_at: string;
+  };
+  organization_id: string;
+}
+
+interface NoticeType {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string | null;
+  dynamic_schema: Record<string, SchemaField>;
+  created_at: string;
+  assigned_to: string | null;
 }
 
 export default function NoticePage() {
@@ -57,21 +92,70 @@ export default function NoticePage() {
   const { notices, loading, error } = useSelector(
     (state: RootState) => state.notice
   );
+  const pathname = usePathname();
 
   const [paginationModel, setPaginationModel] = useState({
     pageSize: 10,
     page: 0,
   });
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [inputUserValue, setInputUserValue] = useState<string>("");
+  const [selectedNoticeType, setSelectedNoticeType] = useState<string | null>(null);
+  const [inputNoticeTypeValue, setInputNoticeTypeValue] = useState<string>("");
+  const [users, setUsers] = useState<User[]>([]);
+  const [noticeTypes, setNoticeTypes] = useState<NoticeType[]>([]);
 
+  // Fetch all users (only needed for admin)
   useEffect(() => {
-    dispatch(fetchNoticesThunk())
+    if (pathname?.startsWith("/admin")) {
+      const fetchInitialData = async () => {
+        try {
+          const usersData = await fetchAllUsers();
+          setUsers(usersData);
+        } catch (err) {
+          console.error("Error fetching users:", err);
+        }
+      };
+      fetchInitialData();
+    }
+  }, [pathname]);
+
+  // Fetch all notice types
+  useEffect(() => {
+    const fetchAllNoticeTypes = async () => {
+      try {
+        let allNoticeTypes: NoticeType[] = [];
+        let page = 1;
+        let hasMore = true;
+
+        while (hasMore) {
+          const response = await fetchNoticeTypesWithTransformedSchemas(page);
+          allNoticeTypes = [...allNoticeTypes, ...response.results];
+          hasMore = !!response.next; // Continue if there’s a next page
+          page++;
+        }
+        setNoticeTypes(allNoticeTypes);
+      } catch (err) {
+        console.error("Error fetching notice types:", err);
+      }
+    };
+    fetchAllNoticeTypes();
+  }, []);
+
+  // Fetch notices with filters
+  useEffect(() => {
+    const params: Record<string, string | null> = {};
+    if (selectedUserId) params["user_id"] = selectedUserId;
+    if (selectedNoticeType) params["notice_type"] = selectedNoticeType;
+
+    dispatch(fetchNoticesThunk(params))
       .then((res) => {
         console.log("Fetched notices:", res.payload);
       })
       .catch((err) => {
         console.error("Error fetching notices:", err);
       });
-  }, [dispatch]);
+  }, [dispatch, selectedUserId, selectedNoticeType]);
 
   const handleDelete = (id: string) => {
     dispatch(deleteNoticeThunk(id))
@@ -94,7 +178,6 @@ export default function NoticePage() {
         throw new Error("No authentication token found. Please log in.");
       }
 
-      // Fetch notice details
       console.log(`Fetching notice with ID: ${notice.id}`);
       const response = await noticeApiClient.get<ApiResponse>(`/notices/${notice.id}/`);
       const fullNotice = response.data.data;
@@ -104,14 +187,12 @@ export default function NoticePage() {
         throw new Error("Invalid notice data received from API");
       }
 
-      // Initialize jsPDF
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "pt",
         format: "a4",
       });
 
-      // Header
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.text("Qodeways Finance Pvt. Ltd.", 50, 50);
@@ -124,20 +205,12 @@ export default function NoticePage() {
         65
       );
 
-      // Recipients
       let recipients = "-";
       if (Array.isArray(fullNotice.dynamic_data?.recipients)) {
         recipients = fullNotice.dynamic_data.recipients
           .map((r: Recipient | string) => {
-            if (typeof r === "string") {
-              return r;
-            }
-            const parts = [
-              r.name || "",
-              r.email || "",
-              r.phone || "",
-              r.address || "",
-            ].filter(Boolean);
+            if (typeof r === "string") return r;
+            const parts = [r.name || "", r.email || "", r.phone || "", r.address || ""].filter(Boolean);
             return parts.join(", ");
           })
           .filter(Boolean)
@@ -149,12 +222,10 @@ export default function NoticePage() {
       doc.setFont("helvetica", "normal");
       doc.text(recipients, 50, 110);
 
-      // Subject
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.text(`Subject: ${fullNotice.notice_type || "Notice"}`, 50, 140);
 
-      // Body
       doc.setFont("helvetica", "normal");
       doc.setFontSize(12);
       doc.text("Dear Sir/Madam,", 50, 160);
@@ -165,7 +236,6 @@ export default function NoticePage() {
         { maxWidth: 500 }
       );
 
-      // Notice Details
       doc.setFont("helvetica", "bold");
       doc.text("Notice Details:", 50, 220);
       doc.setFont("helvetica", "normal");
@@ -183,7 +253,6 @@ export default function NoticePage() {
         295
       );
 
-      // Dynamic Data
       let yPos = 315;
       if (fullNotice.dynamic_data && Object.keys(fullNotice.dynamic_data).length) {
         doc.setFont("helvetica", "bold");
@@ -199,7 +268,6 @@ export default function NoticePage() {
         }
       }
 
-      // Template Content
       const templateContent = String(fullNotice.dynamic_data?.templateContent || fullNotice.dynamic_data?.content || "-");
       doc.setFont("helvetica", "bold");
       doc.text("Template Content:", 50, yPos);
@@ -207,7 +275,6 @@ export default function NoticePage() {
       doc.text(templateContent, 50, yPos + 15, { maxWidth: 400 });
       yPos += 30 + (templateContent.split("\n").length * 10);
 
-      // Schema
       const schema = fullNotice.dynamic_data?.schema
         ? JSON.stringify(fullNotice.dynamic_data.schema, null, 2)
         : "-";
@@ -217,7 +284,6 @@ export default function NoticePage() {
       doc.text(schema, 50, yPos + 15, { maxWidth: 400 });
       yPos += 30 + (schema.split("\n").length * 10);
 
-      // Contact
       doc.setFont("helvetica", "bold");
       doc.text("Contact:", 50, yPos);
       doc.setFont("helvetica", "normal");
@@ -225,14 +291,12 @@ export default function NoticePage() {
       doc.text("Phone: +91-9999999999", 50, yPos + 30);
       yPos += 45;
 
-      // Signature
       doc.text("Sincerely,", 50, yPos);
       doc.text("Legal Department", 50, yPos + 15);
       doc.text("Qodeways Finance Pvt. Ltd.", 50, yPos + 30);
 
-      // Save PDF
       doc.save(`notice-${fullNotice.id}.pdf`);
-    } catch (err: unknown) { // Replaced any with unknown
+    } catch (err: unknown) {
       const error = err as AxiosError<{ detail?: string }>;
       console.error("Error generating PDF:", error.message, error.stack);
       if (error.response?.status === 401) {
@@ -296,38 +360,39 @@ export default function NoticePage() {
       sortable: false,
       filterable: false,
       renderCell: (params: GridRenderCellParams) => (
-        <div style={{ display: "flex", gap: "8px" }}>
-          <Button
-            component={Link}
-            href="/dashboard/admin/notices/edit/${params.row.id}"
-            color="primary"
-            variant="contained"
-            size="small"
-            startIcon={<Edit size={16} />}
-            style={{ cursor: "pointer" }}
-          >
-            Edit
-          </Button>
-          <Button
-            color="error"
-            variant="text"
-            size="small"
-            onClick={() => handleDelete(params.row.id)}
-            style={{ cursor: "pointer" }}
-          >
-            <Trash2 size={16} />
-          </Button>
+        <Box sx={{ display: "flex", gap: "8px" }}>
+          {pathname?.startsWith("/admin") && (
+            <>
+              <Button
+                component={Link}
+                href={`/admin/notices/edit/${params.row.id}`}
+                color="primary"
+                variant="contained"
+                size="small"
+                startIcon={<Edit size={16} />}
+              >
+                Edit
+              </Button>
+              <Button
+                color="error"
+                variant="text"
+                size="small"
+                onClick={() => handleDelete(params.row.id)}
+              >
+                <Trash2 size={16} />
+              </Button>
+            </>
+          )}
           <Button
             color="inherit"
             variant="text"
             size="small"
             onClick={() => handleDownload(params.row as Notice)}
-            style={{ cursor: "pointer" }}
             disabled={!params.row.id}
           >
             <Download size={16} />
           </Button>
-        </div>
+        </Box>
       ),
       width: 200,
     },
@@ -357,19 +422,72 @@ export default function NoticePage() {
 
   return (
     <Container>
-      <Button
-        component={Link}
-        href="/dashboard/admin/notices/create"
-        variant="outlined"
-        color="secondary"
-        size="small"
-        sx={{ mb: 2 }}
-      >
-        Create Notice
-      </Button>
+      <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          {pathname?.startsWith("/admin") && (
+            <Autocomplete
+              options={users}
+              getOptionLabel={(option) => `${option.first_name} ${option.last_name} (${option.email})`}
+              value={users.find((u) => u.id === selectedUserId) || null}
+              onChange={(_, newValue) => setSelectedUserId(newValue?.id || null)}
+              inputValue={inputUserValue}
+              onInputChange={(_, newInputValue) => setInputUserValue(newInputValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Filter by User"
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search size={16} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ minWidth: 200 }}
+                />
+              )}
+            />
+          )}
+          <Autocomplete
+            options={noticeTypes}
+            getOptionLabel={(option) => option.name}
+            value={noticeTypes.find((nt) => nt.id === selectedNoticeType) || null}
+            onChange={(_, newValue) => setSelectedNoticeType(newValue?.id || null)}
+            inputValue={inputNoticeTypeValue}
+            onInputChange={(_, newInputValue) => setInputNoticeTypeValue(newInputValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Filter by Notice Type"
+                size="small"
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={16} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ minWidth: 200 }}
+              />
+            )}
+          />
+        </Box>
+        <Button
+          component={Link}
+          href={pathname?.startsWith("/admin") ? "/admin/notices/create" : "/user/notices/create"}
+          variant="contained"
+          color="primary"
+          size="medium"
+        >
+          Create Notice
+        </Button>
+      </Box>
 
-      <div style={{ width: "100%" }}>
-        {error && <Typography style={{ color: "red" }}>Error: {error}</Typography>}
+      <Box sx={{ width: "100%" }}>
+        {error && <Typography color="error">Error: {error}</Typography>}
         {loading ? (
           <DataGridSkeleton />
         ) : (
@@ -381,7 +499,7 @@ export default function NoticePage() {
               rows={notices}
               columns={columns}
               getRowId={(row) => row.id}
-              pagination={true}
+              pagination
               disableRowSelectionOnClick
               autoHeight
               hideFooterSelectedRowCount
@@ -391,7 +509,7 @@ export default function NoticePage() {
             />
           </>
         )}
-      </div>
+      </Box>
     </Container>
   );
 }
