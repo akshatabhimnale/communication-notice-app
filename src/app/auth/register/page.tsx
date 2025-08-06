@@ -267,6 +267,7 @@ export default function RegisterPage() {
               Select Role
             </MenuItem>
             <MenuItem value="admin">Admin</MenuItem>
+            <MenuItem value="user">User</MenuItem>
           </Select>
 
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
