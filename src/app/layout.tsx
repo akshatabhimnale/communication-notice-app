@@ -56,7 +56,7 @@ const NAVIGATION: Navigation = [
       {
         title: "Bulk Send",
         icon: <SendIcon />,
-        segment: "",
+        segment: "bulk-send",
       },
       {
         title: "View Notices",
