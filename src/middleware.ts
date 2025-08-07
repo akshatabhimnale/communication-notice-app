@@ -17,11 +17,6 @@ const decodeJWT = (token: string): UserToken | null => {
   }
 };
 
-const roleBasedRoutes: Record<string, string[]> = {
-  "/": ["user","admin"],
-  "/user": ["user", "admin"],
-};
-
 export async function middleware(req: NextRequest) {
   console.log("🌐 Middleware Triggered:", req.nextUrl.pathname);
 
@@ -35,27 +30,76 @@ export async function middleware(req: NextRequest) {
     console.log("✅ Decoded Token:", decodedToken);
   }
 
+  // If no user role and accessing root, redirect to login
   if (!userRole && req.nextUrl.pathname === "/") {
     console.log("⛔ No User Role - Redirecting to Login");
     return NextResponse.redirect(new URL("/auth/login", req.url));
   }
 
-  for (const [route, allowedRoles] of Object.entries(roleBasedRoutes)) {
-    if (
-      req.nextUrl.pathname.startsWith(route) &&
-      (!userRole || !allowedRoles.includes(userRole))
-    ) {
-      console.log(
-        `⛔ Unauthorized Access Attempt: ${req.nextUrl.pathname} - Redirecting`
-      );
-      return NextResponse.redirect(new URL("/unauthorized", req.url));
-    }
+  // Auto-redirect authenticated users from root to their role-based dashboard
+  if (userRole && req.nextUrl.pathname === "/") {
+    console.log(
+      `🔀 User Role Found (${userRole}) - Redirecting to /${userRole}/dashboard`
+    );
+    return NextResponse.redirect(new URL(`/${userRole}/dashboard`, req.url));
   }
 
-  console.log("✅ Access Granted - Proceeding with Request");
-  return NextResponse.next();
+  // Admin users bypass all checks
+  if (userRole === "admin") {
+    return NextResponse.next();
+  }
+
+  // From here on, only userRole === "user"
+  const path = req.nextUrl.pathname;
+
+  // Redirect user from admin paths to corresponding user paths
+  if (path.startsWith("/admin/notice-types")) {
+    console.log("🔄 Redirecting user from admin notice-types to user notice-types");
+    return NextResponse.redirect(new URL(path.replace("/admin", "/user"), req.url));
+  }
+  if (path.startsWith("/admin/settings")) {
+    console.log("🔄 Redirecting user from admin settings to user settings");
+    return NextResponse.redirect(new URL(path.replace("/admin", "/user"), req.url));
+  }
+  if (path.startsWith("/admin/dashboard")) {
+    console.log("🔄 Redirecting user from admin dashboard to user dashboard");
+    return NextResponse.redirect(new URL("/user/dashboard", req.url));
+  }
+  if (path.startsWith("/admin/notices")) {
+    console.log("🔄 Redirecting user from admin notices to user notices");
+    return NextResponse.redirect(new URL(path.replace("/admin", "/user"), req.url));
+  }
+   if (path.startsWith("/admin/profile")) {
+    console.log("🔄 Redirecting user from admin profile to user profile");
+    return NextResponse.redirect(new URL(path.replace("/admin", "/user"), req.url));
+  }
+
+  // Allowed user-specific routes
+  const allowedUserRoutes = [
+    "/user/dashboard",
+    "/user/notice-types",
+    "/user/settings",
+    "/user/notices",
+    "/user/profile",
+  ];
+  if (allowedUserRoutes.some(route => path.startsWith(route))) {
+    return NextResponse.next();
+  }
+
+  // All other attempts by user are unauthorized
+  console.log(`⛔ User role cannot access ${path} - Redirecting to unauthorized`);
+  return NextResponse.redirect(new URL("/unauthorized", req.url));
 }
 
 export const config = {
-  matcher: ["/", "/admin/:path*", "/user/:path*"],
+  matcher: [
+    "/",
+    "/admin/:path*",
+    "/user/:path*",
+    "/admin/notice-types/:path*",
+    "/user/notice-types/:path*",
+    "/user/settings/:path*",
+    "/admin/settings/:path*",
+    "/dashboard/:path*",
+  ],
 };

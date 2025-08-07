@@ -46,7 +46,7 @@ const NAVIGATION: Navigation = [
   {
     title: "User Actions",
     icon: <DescriptionIcon />,
-    segment: "notices",
+    segment: "admin/notices",
     children: [
       {
         title: "Bulk Upload",

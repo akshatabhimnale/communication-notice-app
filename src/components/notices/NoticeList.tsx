@@ -26,7 +26,7 @@ const NoticeList = () => {
   );
 
   useEffect(() => {
-    dispatch(fetchNoticesThunk());
+    dispatch(fetchNoticesThunk({}));
   }, [dispatch]);
 
   const handleDelete = (id: string) => {
