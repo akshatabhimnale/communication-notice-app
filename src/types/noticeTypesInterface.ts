@@ -5,6 +5,7 @@ export interface Notice {
   created_by?: string;
   status?: string;
   priority?: string;
+  batch_name?: string;
   created_at?: string;
   // Legacy fields for backward compatibility
   title?: string;
@@ -18,6 +19,7 @@ export interface CreateNoticeRequest {
   created_by: string;
   status: string;
   priority: string;
+  batch_name?: string;
 }
 
 export interface BulkUploadResponse {
@@ -141,4 +143,19 @@ export interface TransformedNoticeType {
   dynamic_schema: Record<string, SchemaField>;
   created_at: string;
   assigned_to: string | null;
+}
+
+export interface BatchNameCheckResponse {
+  available: boolean;
+  suggestions?: string[];
+  message?: string;
+}
+
+export interface BatchNameApiResponse {
+  success: boolean;
+  data: {
+    batch_names: string[];
+  };
+  errors: Record<string, unknown>;
+  meta: Record<string, unknown>;
 }
