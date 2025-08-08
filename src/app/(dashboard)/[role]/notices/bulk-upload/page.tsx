@@ -14,6 +14,7 @@ import {
   SelectChangeEvent,
   TextField,
   Typography,
+  Chip,
 } from "@mui/material";
 import {
   bulkUploadFile,
@@ -31,6 +32,7 @@ import { useSnackbar } from "notistack";
 import { ClientAdminOnly } from "@/components/auth/ClientRoleGuard";
 import { useRole } from "@/hooks/useRole";
 import { useRouter } from "next/navigation";
+import useBatchNameCheck from "@/hooks/useBatchNameCheck";
 
 // ---------- helpers ---------------------------------------------------------
 
@@ -97,6 +99,7 @@ const BulkUpload: React.FC = () => {
   const [userId, setUserId] = useState("");
   const [username, setUsername] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [batchName, setBatchName] = useState("");
 
   const dispatch = useAppDispatch();
   const users = useAppSelector((state) => state.users.users);
@@ -104,6 +107,27 @@ const BulkUpload: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const { userRole } = useRole();
   const router = useRouter();
+
+  // Batch name validation hook
+  const {
+    isChecking: isBatchNameChecking,
+    result: batchNameResult,
+    error: batchNameError,
+    checkBatchName,
+    clearResult: clearBatchNameResult,
+  } = useBatchNameCheck(500);
+
+  // Debug effect to log batch name results
+  useEffect(() => {
+    if (batchNameResult) {
+      console.log("🔍 UI - Batch name result:", {
+        batchName,
+        available: batchNameResult.available,
+        message: batchNameResult.message,
+        suggestions: batchNameResult.suggestions
+      });
+    }
+  }, [batchNameResult, batchName]);
 
   // ---------- side-effects --------------------------------------------------
   useEffect(() => {
@@ -155,6 +179,8 @@ const BulkUpload: React.FC = () => {
   // ---------- handlers ------------------------------------------------------
   const resetForm = useCallback(() => {
     setSelectedNoticeType("");
+    setBatchName("");
+    clearBatchNameResult();
     if (userRole === "admin") {
       setUserId("");
     }
@@ -162,7 +188,18 @@ const BulkUpload: React.FC = () => {
     // Clear the hidden input
     const input = document.getElementById("file-upload") as HTMLInputElement;
     if (input) input.value = "";
-  }, [userRole]);
+  }, [userRole, clearBatchNameResult]);
+
+  const handleBatchNameChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setBatchName(value);
+    checkBatchName(value);
+  }, [checkBatchName]);
+
+  const handleSuggestionClick = useCallback((suggestion: string) => {
+    setBatchName(suggestion);
+    checkBatchName(suggestion);
+  }, [checkBatchName]);
 
   const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -192,6 +229,14 @@ const BulkUpload: React.FC = () => {
       enqueueSnackbar("Please add a valid file before uploading.", {
         variant: "error",
       });
+      return;
+    }
+    if (!batchName.trim()) {
+      enqueueSnackbar("Please enter a batch name.", { variant: "error" });
+      return;
+    }
+    if (batchNameResult && !batchNameResult.available) {
+      enqueueSnackbar("Please choose an available batch name or use one of the suggestions.", { variant: "error" });
       return;
     }
 
@@ -248,6 +293,7 @@ const BulkUpload: React.FC = () => {
             selectedNoticeType,
             dynamicDataArray[i],
             finalUserId,
+            batchName
           );
           createdCount++;
         } catch (error) {
@@ -358,12 +404,67 @@ const BulkUpload: React.FC = () => {
             </Select>
           </FormControl>
         </ClientAdminOnly>
+
+        {/* -----------------Batch Name Input---------------- */}
+        <FormControl fullWidth sx={{ mb: 2 }} required>
+          <TextField
+            label="Batch Name"
+            value={batchName}
+            onChange={handleBatchNameChange}
+            disabled={loading}
+            error={!!batchNameError || (batchNameResult?.available === false)}
+            helperText={
+              batchNameError ? (
+                batchNameError
+              ) : isBatchNameChecking ? (
+                "Checking availability..."
+              ) : batchNameResult?.available ? (
+                <Typography component="span" color="success.main">
+                  ✓ Batch name is available
+                </Typography>
+              ) : batchNameResult && !batchNameResult.available ? (
+                batchNameResult.message || "Batch name is already taken"
+              ) : (
+                "Enter a unique batch name for this upload"
+              )
+            }
+            InputProps={{
+              endAdornment: isBatchNameChecking ? (
+                <CircularProgress size={20} />
+              ) : undefined,
+            }}
+          />
+          
+          {/* Suggestions */}
+          {batchNameResult && !batchNameResult.available && batchNameResult.suggestions && batchNameResult.suggestions.length > 0 && (
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                Suggested available names:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {batchNameResult.suggestions.map((suggestion, index) => (
+                  <Chip
+                    key={index}
+                    label={suggestion}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    clickable
+                    size="small"
+                    variant="outlined"
+                    sx={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
+        </FormControl>
+
         {/* -----------------Display username for non-admin---------------- */}
         {userRole === "user" && userId && (
           <Typography variant="body2" sx={{ mb: 2 }}>
             Created By: {username}
           </Typography>
         )}
+
 
         {/* Drag-and-Drop area doubles as file input label */}
         <Box
@@ -415,6 +516,9 @@ const BulkUpload: React.FC = () => {
               loading ||
               !validatedFile ||
               !selectedNoticeType ||
+              !batchName.trim() ||
+              isBatchNameChecking ||
+              (batchNameResult?.available === false) ||
               (userRole === "admin" && !userId)
             }
             startIcon={loading ? <CircularProgress size={20} /> : undefined}
