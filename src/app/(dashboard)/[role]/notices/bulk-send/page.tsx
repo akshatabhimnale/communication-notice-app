@@ -149,7 +149,7 @@ const BulkSend: React.FC = () => {
   // Fetch batch names based on selected notice type
   useEffect(() => {
     const fetchBatchNames = async () => {
-      if (!selectedNoticeType || !selectedUserId) {
+      if (!selectedNoticeType) {
         setBatchNames([]);
         setSelectedBatchName("");
         return;
@@ -159,13 +159,13 @@ const BulkSend: React.FC = () => {
         throw new Error("No authentication token found. Please log in.");
       }
       try {
-        const params = { notice_type: selectedNoticeType, user_id: selectedUserId };
+        const params = { notice_type: selectedNoticeType };
         const queryString = new URLSearchParams(params).toString();
-        console.log(`Fetching batch names with URL: /notices/batch-names/?${queryString}`);
-        const response = await noticeApiClient.get<{ data: { batch_names: string[] } }>(
-          `/notices/batch-names/?${queryString}`
-        );
-        setBatchNames(response.data.data.batch_names || []);
+        console.log(`Fetching batch names with URL: /bulk-notices/batch-names/?${queryString}`);
+        const response = await noticeApiClient.get<{ data: { batch_names: string[] } }>(`/bulk-notices/batch-names/?${queryString}`);
+        console.log("Batch names response:", response.data); // Debug the full response
+        const batchNamesData = response.data.data?.batch_names || [];
+        setBatchNames(batchNamesData);
         setSelectedBatchName("");
       } catch (err: unknown) {
         console.error("Error fetching batch names:", err);
@@ -174,17 +174,14 @@ const BulkSend: React.FC = () => {
             clearTokenCookie();
             throw new Error("Authentication failed. Please log in again.");
           }
-          throw new Error(
-            err.response
-              ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
-              : "Network Error: Unable to reach the server"
-          );
+          console.error("API Error:", err.response?.data);
+          setBatchNames([]); // Fallback to empty array on error
         }
-        throw new Error("An unexpected error occurred");
+        setBatchNames([]); // Fallback to empty array on unexpected error
       }
     };
     fetchBatchNames();
-  }, [selectedNoticeType, selectedUserId]);
+  }, [selectedNoticeType]);
 
   // Fetch notices with filters
   useEffect(() => {
