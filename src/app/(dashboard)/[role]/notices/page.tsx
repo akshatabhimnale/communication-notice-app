@@ -18,7 +18,6 @@ import {
   InputAdornment,
 } from "@mui/material";
 import Link from "next/link";
-import { useDispatch, useSelector } from "react-redux";
 import { Trash2, Edit, Download, Search } from "lucide-react";
 import jsPDF from "jspdf";
 import noticeApiClient from "@/services/apiClients/noticeApiClient";
@@ -28,6 +27,7 @@ import { fetchAllUsers } from "@/services/userService";
 import { fetchNoticeTypesWithTransformedSchemas } from "@/services/noticeService";
 import { SchemaField } from "@/types/noticeTypesInterface";
 import { usePathname } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
 
 interface Recipient {
   name?: string;
@@ -104,6 +104,7 @@ export default function NoticePage() {
   const [inputNoticeTypeValue, setInputNoticeTypeValue] = useState<string>("");
   const [users, setUsers] = useState<User[]>([]);
   const [noticeTypes, setNoticeTypes] = useState<NoticeType[]>([]);
+  const [filteredNoticeTypes, setFilteredNoticeTypes] = useState<NoticeType[]>([]);
 
   // Fetch all users (only needed for admin)
   useEffect(() => {
@@ -131,16 +132,31 @@ export default function NoticePage() {
         while (hasMore) {
           const response = await fetchNoticeTypesWithTransformedSchemas(page);
           allNoticeTypes = [...allNoticeTypes, ...response.results];
-          hasMore = !!response.next; // Continue if there’s a next page
+          hasMore = !!response.next;
           page++;
         }
         setNoticeTypes(allNoticeTypes);
+        setFilteredNoticeTypes(allNoticeTypes); // Initially, show all notice types
       } catch (err) {
         console.error("Error fetching notice types:", err);
       }
     };
     fetchAllNoticeTypes();
   }, []);
+
+  // Filter notice types based on selected user
+  useEffect(() => {
+    if (selectedUserId && pathname?.startsWith("/admin")) {
+      const filtered = noticeTypes.filter(
+        (type) => type.assigned_to === selectedUserId 
+      );
+      setFilteredNoticeTypes(filtered);
+      setSelectedNoticeType(null); // Reset notice type selection when user changes
+    } else {
+      setFilteredNoticeTypes(noticeTypes); // Show all notice types if no user selected or not admin
+      setSelectedNoticeType(null);
+    }
+  }, [selectedUserId, noticeTypes, pathname]);
 
   // Fetch notices with filters
   useEffect(() => {
@@ -451,9 +467,9 @@ export default function NoticePage() {
             />
           )}
           <Autocomplete
-            options={noticeTypes}
+            options={filteredNoticeTypes}
             getOptionLabel={(option) => option.name}
-            value={noticeTypes.find((nt) => nt.id === selectedNoticeType) || null}
+            value={filteredNoticeTypes.find((nt) => nt.id === selectedNoticeType) || null}
             onChange={(_, newValue) => setSelectedNoticeType(newValue?.id || null)}
             inputValue={inputNoticeTypeValue}
             onInputChange={(_, newInputValue) => setInputNoticeTypeValue(newInputValue)}
@@ -473,6 +489,7 @@ export default function NoticePage() {
                 sx={{ minWidth: 200 }}
               />
             )}
+            disabled={pathname?.startsWith("/admin") && !selectedUserId}
           />
         </Box>
         <Button

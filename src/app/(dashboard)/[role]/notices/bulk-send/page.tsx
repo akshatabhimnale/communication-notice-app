@@ -22,31 +22,7 @@ import { AxiosError } from "axios";
 import { fetchNoticeTypesWithTransformedSchemas } from "@/services/noticeService";
 import { fetchAllUsers } from "@/services/userService";
 import { SchemaField } from "@/types/noticeTypesInterface";
-
-
-// interface Recipient {
-//   name?: string;
-//   email?: string;
-//   phone?: string;
-//   address?: string;
-// }
-
-// interface Notice {
-//   id: string;
-//   notice_type?: string;
-//   dynamic_data?: {
-//     recipients?: Recipient[] | string[];
-//     templateContent?: string;
-//     schema?: unknown;
-//     [key: string]: unknown;
-//   };
-//   created_by?: string;
-//   status?: string;
-//   priority?: string;
-//   created_at?: string;
-//   updated_at?: string;
-//   batch_name?: string; // Added to match the new backend field
-// }
+import { usePathname } from "next/navigation";
 
 interface User {
   id: string;
@@ -79,26 +55,55 @@ interface NoticeType {
 const BulkSend: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { notices, loading, error } = useSelector((state: RootState) => state.notice);
+  const pathname = usePathname();
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [selectedNoticeType, setSelectedNoticeType] = useState<string>("");
   const [selectedBatchName, setSelectedBatchName] = useState<string>("");
   const [users, setUsers] = useState<User[]>([]);
   const [noticeTypes, setNoticeTypes] = useState<NoticeType[]>([]);
+  const [filteredNoticeTypes, setFilteredNoticeTypes] = useState<NoticeType[]>([]);
   const [batchNames, setBatchNames] = useState<string[]>([]);
   const [paginationModel, setPaginationModel] = useState({ pageSize: 10, page: 0 });
 
-  // Fetch all users
+  // Fetch current user ID for non-admin users
   useEffect(() => {
-    const fetchUsersData = async () => {
-      try {
-        const usersData = await fetchAllUsers();
-        setUsers(usersData);
-      } catch (err) {
-        console.error("Error fetching users:", err);
-      }
-    };
-    fetchUsersData();
-  }, []);
+    if (!pathname?.startsWith("/admin")) {
+      const fetchCurrentUser = async () => {
+        try {
+          const token = getTokenFromCookie();
+          if (!token) {
+            throw new Error("No authentication token found. Please log in.");
+          }
+          const response = await noticeApiClient.get<{ data: User }>("/users/me/", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setSelectedUserId(response.data.data.id);
+        } catch (err) {
+          console.error("Error fetching current user:", err);
+          if (err instanceof AxiosError && err.response?.status === 401) {
+            clearTokenCookie();
+            throw new Error("Authentication failed. Please log in again.");
+          }
+        }
+      };
+      fetchCurrentUser();
+    }
+  }, [pathname]);
+
+  // Fetch all users (only for admin)
+  useEffect(() => {
+    if (pathname?.startsWith("/admin")) {
+      const fetchUsersData = async () => {
+        try {
+          const usersData = await fetchAllUsers();
+          setUsers(usersData);
+        } catch (err) {
+          console.error("Error fetching users:", err);
+        }
+      };
+      fetchUsersData();
+    }
+  }, [pathname]);
 
   // Fetch all notice types
   useEffect(() => {
@@ -115,6 +120,7 @@ const BulkSend: React.FC = () => {
           page++;
         }
         setNoticeTypes(allNoticeTypes);
+        setFilteredNoticeTypes(allNoticeTypes);
       } catch (err) {
         console.error("Error fetching notice types:", err);
       }
@@ -122,30 +128,55 @@ const BulkSend: React.FC = () => {
     fetchAllNoticeTypes();
   }, []);
 
-  // Fetch batch names from /notices/batch-names/ API
+  // Filter notice types based on selected user
+  useEffect(() => {
+    if (selectedUserId) {
+      const filtered = noticeTypes.filter(
+        (type) => type.assigned_to === selectedUserId
+      );
+      setFilteredNoticeTypes(filtered);
+      setSelectedNoticeType("");
+      setBatchNames([]);
+      setSelectedBatchName("");
+    } else {
+      setFilteredNoticeTypes(noticeTypes);
+      setSelectedNoticeType("");
+      setBatchNames([]);
+      setSelectedBatchName("");
+    }
+  }, [selectedUserId, noticeTypes]);
+
+  // Fetch batch names based on selected notice type
   useEffect(() => {
     const fetchBatchNames = async () => {
+      if (!selectedNoticeType || !selectedUserId) {
+        setBatchNames([]);
+        setSelectedBatchName("");
+        return;
+      }
       const token = getTokenFromCookie();
       if (!token) {
         throw new Error("No authentication token found. Please log in.");
       }
       try {
-        const response = await noticeApiClient.get<{ data: { batch_names: string[] } }>("/notices/batch-names/");
+        const params = { notice_type: selectedNoticeType, user_id: selectedUserId };
+        const queryString = new URLSearchParams(params).toString();
+        console.log(`Fetching batch names with URL: /notices/batch-names/?${queryString}`);
+        const response = await noticeApiClient.get<{ data: { batch_names: string[] } }>(
+          `/notices/batch-names/?${queryString}`
+        );
         setBatchNames(response.data.data.batch_names || []);
+        setSelectedBatchName("");
       } catch (err: unknown) {
+        console.error("Error fetching batch names:", err);
         if (err instanceof AxiosError) {
-          console.error("Full error:", err.response?.data, err.config);
           if (err.response?.status === 401) {
             clearTokenCookie();
-            throw new Error(
-              "Authentication failed. Your session may have expired. Please log in again."
-            );
+            throw new Error("Authentication failed. Please log in again.");
           }
           throw new Error(
             err.response
-              ? `API Error ${err.response.status}: ${JSON.stringify(
-                  err.response.data
-                )}`
+              ? `API Error ${err.response.status}: ${JSON.stringify(err.response.data)}`
               : "Network Error: Unable to reach the server"
           );
         }
@@ -153,11 +184,11 @@ const BulkSend: React.FC = () => {
       }
     };
     fetchBatchNames();
-  }, []);
+  }, [selectedNoticeType, selectedUserId]);
 
   // Fetch notices with filters
   useEffect(() => {
-    const params: Record<string, string | null> = {};
+    const params: Record<string, string> = {};
     if (selectedUserId) params["user_id"] = selectedUserId;
     if (selectedNoticeType) params["notice_type"] = selectedNoticeType;
     if (selectedBatchName) params["batch_name"] = selectedBatchName;
@@ -244,23 +275,25 @@ const BulkSend: React.FC = () => {
   return (
     <Container>
       <Box sx={{ padding: "40px", display: "flex", flexDirection: "column", gap: "30px", width: "100%", maxWidth: "1200px", margin: "0 auto" }}>
-        <FormControl fullWidth>
-          <InputLabel>Select User*</InputLabel>
-          <Select
-            label="Select User*"
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value as string)}
-          >
-            <MenuItem value="" disabled>
-              Select
-            </MenuItem>
-            {users.map((user) => (
-              <MenuItem key={user.id} value={user.id}>
-                {`${user.first_name} ${user.last_name} (${user.email})`}
+        {pathname?.startsWith("/admin") && (
+          <FormControl fullWidth>
+            <InputLabel>Select User*</InputLabel>
+            <Select
+              label="Select User*"
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value as string)}
+            >
+              <MenuItem value="" disabled>
+                Select User
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+              {users.map((user) => (
+                <MenuItem key={user.id} value={user.id}>
+                  {`${user.first_name} ${user.last_name} (${user.email})`}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
         <Box sx={{ display: "flex", gap: "30px" }}>
           <FormControl fullWidth sx={{ flex: 1 }}>
             <InputLabel>Select Notice Type*</InputLabel>
@@ -268,11 +301,12 @@ const BulkSend: React.FC = () => {
               label="Select Notice Type*"
               value={selectedNoticeType}
               onChange={(e) => setSelectedNoticeType(e.target.value as string)}
+              disabled={pathname?.startsWith("/admin") && !selectedUserId}
             >
               <MenuItem value="" disabled>
                 Select Notice Type
               </MenuItem>
-              {noticeTypes.map((type) => (
+              {filteredNoticeTypes.map((type) => (
                 <MenuItem key={type.id} value={type.id}>
                   {type.name}
                 </MenuItem>
@@ -285,6 +319,7 @@ const BulkSend: React.FC = () => {
               label="Select Batch Name"
               value={selectedBatchName}
               onChange={(e) => setSelectedBatchName(e.target.value as string)}
+              disabled={!selectedNoticeType}
             >
               <MenuItem value="" disabled>
                 Select Batch Name
