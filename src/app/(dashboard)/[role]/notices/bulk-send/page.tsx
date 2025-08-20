@@ -23,6 +23,7 @@ import { fetchNoticeTypesWithTransformedSchemas } from "@/services/noticeService
 import { fetchAllUsers } from "@/services/userService";
 import { SchemaField } from "@/types/noticeTypesInterface";
 import { usePathname } from "next/navigation";
+import { useSnackbar } from "notistack"; // Import useSnackbar
 
 interface User {
   id: string;
@@ -64,6 +65,7 @@ const BulkSend: React.FC = () => {
   const [filteredNoticeTypes, setFilteredNoticeTypes] = useState<NoticeType[]>([]);
   const [batchNames, setBatchNames] = useState<string[]>([]);
   const [paginationModel, setPaginationModel] = useState({ pageSize: 10, page: 0 });
+  const { enqueueSnackbar } = useSnackbar(); // Initialize useSnackbar
 
   // Fetch current user ID for non-admin users
   useEffect(() => {
@@ -162,9 +164,14 @@ const BulkSend: React.FC = () => {
         const params = { notice_type: selectedNoticeType };
         const queryString = new URLSearchParams(params).toString();
         console.log(`Fetching batch names with URL: /bulk-notices/batch-names/?${queryString}`);
-        const response = await noticeApiClient.get<{ data: { batch_names: string[] } }>(`/bulk-notices/batch-names/?${queryString}`);
-        console.log("Batch names response:", response.data); // Debug the full response
+        const response = await noticeApiClient.get<{ success: boolean; data: { batch_names: string[] }; errors: object; meta: object }>(
+          `/bulk-notices/batch-names/?${queryString}`
+        );
+        console.log("Batch names response:", response.data);
         const batchNamesData = response.data.data?.batch_names || [];
+        if (batchNamesData.length === 0) {
+          console.warn("No batch names found for the selected notice type.");
+        }
         setBatchNames(batchNamesData);
         setSelectedBatchName("");
       } catch (err: unknown) {
@@ -198,6 +205,42 @@ const BulkSend: React.FC = () => {
         console.error("Error fetching notices:", err);
       });
   }, [dispatch, selectedUserId, selectedNoticeType, selectedBatchName]);
+
+  const handleSubmit = async () => {
+    const token = getTokenFromCookie();
+    if (!token) {
+      enqueueSnackbar("No authentication token found. Please log in.", { variant: "error" });
+      return;
+    }
+
+    const payload = {
+      created_by: selectedUserId,
+      notice_type: selectedNoticeType,
+      batch_name: selectedBatchName || null,
+    };
+
+    console.log("Submitting data to bulk-send API:", payload);
+
+    try {
+      const response = await noticeApiClient.post("/bulk-notices/bulk-send/", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      enqueueSnackbar(response.data.message || "Bulk send initiated successfully.", { variant: "success" });
+      console.log("API Response:", response.data);
+    } catch (err) {
+      console.error("Error submitting bulk send:", err);
+      if (err instanceof AxiosError) {
+        enqueueSnackbar(
+          err.response?.data?.errors
+            ? `Error: ${JSON.stringify(err.response.data.errors)}`
+            : "Failed to submit bulk send. Please try again.",
+          { variant: "error" }
+        );
+      } else {
+        enqueueSnackbar("An unexpected error occurred.", { variant: "error" });
+      }
+    }
+  };
 
   const columns: GridColDef[] = [
     {
@@ -321,6 +364,11 @@ const BulkSend: React.FC = () => {
               <MenuItem value="" disabled>
                 Select Batch Name
               </MenuItem>
+              {batchNames.length === 0 && selectedNoticeType && (
+                <MenuItem value="" disabled>
+                  No batch names available
+                </MenuItem>
+              )}
               {batchNames.map((batch) => (
                 <MenuItem key={batch} value={batch}>
                   {batch}
@@ -363,7 +411,7 @@ const BulkSend: React.FC = () => {
             />
           </FormControl>
         </Box>
-        <Button variant="contained" sx={{ width: "200px" }}>
+        <Button variant="contained" sx={{ width: "200px" }} onClick={handleSubmit}>
           Submit
         </Button>
         <Box sx={{ width: "100%", mt: 4 }}>
