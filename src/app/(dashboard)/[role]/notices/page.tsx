@@ -1,7 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { AppDispatch, RootState } from "@/store";
+import {
+  deleteNoticeThunk,
+  fetchNoticesThunk,
+} from "@/store/slices/noticeSlice";
 import {
   Button,
   Container,
@@ -11,7 +16,6 @@ import {
   Autocomplete,
   TextField,
   InputAdornment,
-  CircularProgress,
 } from "@mui/material";
 import Link from "next/link";
 import { Trash2, Edit, Download, Search } from "lucide-react";
@@ -21,8 +25,9 @@ import { getTokenFromCookie, clearTokenCookie } from "@/services/userService";
 import { AxiosError } from "axios";
 import { fetchAllUsers } from "@/services/userService";
 import { fetchNoticeTypesWithTransformedSchemas } from "@/services/noticeService";
-import { SchemaField, PaginatedNoticeResponse } from "@/types/noticeTypesInterface";
+import { SchemaField } from "@/types/noticeTypesInterface";
 import { usePathname } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
 
 interface Recipient {
   name?: string;
@@ -32,7 +37,7 @@ interface Recipient {
 }
 
 interface Notice {
-  id?: string;
+  id: string;
   notice_type?: string;
   dynamic_data?: {
     recipients?: Recipient[] | string[];
@@ -83,16 +88,16 @@ interface NoticeType {
 }
 
 export default function NoticePage() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { notices, loading, error } = useSelector(
+    (state: RootState) => state.notice
+  );
   const pathname = usePathname();
 
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [paginationModel, setPaginationModel] = useState({
-    page: 0,
     pageSize: 10,
+    page: 0,
   });
-  const [totalRows, setTotalRows] = useState(0);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [inputUserValue, setInputUserValue] = useState<string>("");
   const [selectedNoticeType, setSelectedNoticeType] = useState<string | null>(null);
@@ -100,38 +105,6 @@ export default function NoticePage() {
   const [users, setUsers] = useState<User[]>([]);
   const [noticeTypes, setNoticeTypes] = useState<NoticeType[]>([]);
   const [filteredNoticeTypes, setFilteredNoticeTypes] = useState<NoticeType[]>([]);
-
-  const loadNotices = useCallback(async (page: number) => {
-    setInitialLoading(true);
-    setError(null);
-    try {
-      const params: Record<string, any> = { page: page + 1 }; // API page is 1-based
-      if (selectedUserId) params.user_id = selectedUserId;
-      if (selectedNoticeType) params.notice_type = selectedNoticeType;
-
-      const response = await noticeApiClient.get<PaginatedNoticeResponse>("/notices/", { params });
-      console.log('data is here',response.data);
-      if (!Array.isArray(response.data.results)) {
-        throw new Error("Invalid data format. Expected an array in results.");
-      }
-      setNotices(response.data.results);
-      setTotalRows(response.data.count);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load notices");
-    } finally {
-      setInitialLoading(false);
-    }
-  }, [selectedUserId, selectedNoticeType]);
-
-  // Reset page to 0 when filters change
-  useEffect(() => {
-    setPaginationModel((prev) => ({ ...prev, page: 0 }));
-  }, [selectedUserId, selectedNoticeType]);
-
-  // Fetch notices when page or filters change (after page reset)
-  useEffect(() => {
-    loadNotices(paginationModel.page);
-  }, [loadNotices, paginationModel.page]);
 
   // Fetch all users (only needed for admin)
   useEffect(() => {
@@ -185,14 +158,29 @@ export default function NoticePage() {
     }
   }, [selectedUserId, noticeTypes, pathname]);
 
-  const handleDelete = async (id: string) => {
-    try {
-      await noticeApiClient.delete(`/notices/${id}/`);
-      // Refetch current page after delete
-      loadNotices(paginationModel.page);
-    } catch (err) {
-      console.error("Error deleting notice:", err);
-    }
+  // Fetch notices with filters
+  useEffect(() => {
+    const params: Record<string, string | null> = {};
+    if (selectedUserId) params["user_id"] = selectedUserId;
+    if (selectedNoticeType) params["notice_type"] = selectedNoticeType;
+
+    dispatch(fetchNoticesThunk(params))
+      .then((res) => {
+        console.log("Fetched notices:", res.payload);
+      })
+      .catch((err) => {
+        console.error("Error fetching notices:", err);
+      });
+  }, [dispatch, selectedUserId, selectedNoticeType]);
+
+  const handleDelete = (id: string) => {
+    dispatch(deleteNoticeThunk(id))
+      .then((res) => {
+        console.log("Notice deleted successfully:", res);
+      })
+      .catch((err) => {
+        console.error("Error deleting notice:", err);
+      });
   };
 
   const handleDownload = async (notice: Notice) => {
@@ -214,7 +202,6 @@ export default function NoticePage() {
       if (!fullNotice || !fullNotice.id) {
         throw new Error("Invalid notice data received from API");
       }
-
 
       const doc = new jsPDF({
         orientation: "portrait",
@@ -343,9 +330,8 @@ export default function NoticePage() {
       headerName: "Sr No",
       width: 80,
       renderCell: (params) => {
-        // Since server pagination, srNo = (page * pageSize) + index + 1
         const index = notices.findIndex((notice) => notice.id === params.row.id);
-        return <span>{paginationModel.page * paginationModel.pageSize + index + 1}</span>;
+        return <span>{index + 1}</span>;
       },
     },
     {
@@ -450,17 +436,6 @@ export default function NoticePage() {
     </Box>
   );
 
-  if (error) {
-    return (
-      <Box sx={{ textAlign: "center", mt: 4 }}>
-        <Typography color="error">{error}</Typography>
-        <Button variant="contained" onClick={() => loadNotices(paginationModel.page)} sx={{ mt: 2 }}>
-          Retry
-        </Button>
-      </Box>
-    );
-  }
-
   return (
     <Container>
       <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -528,27 +503,28 @@ export default function NoticePage() {
         </Button>
       </Box>
 
-      <Box sx={{ width: "100%", position: "relative" }}>
-        {initialLoading ? (
+      <Box sx={{ width: "100%" }}>
+        {error && <Typography color="error">Error: {error}</Typography>}
+        {loading ? (
           <DataGridSkeleton />
-        ) : notices.length === 0 ? (
-          <Typography textAlign="center" color="text.secondary">
-            No notices available
-          </Typography>
         ) : (
-          <DataGrid
-            rows={notices}
-            columns={columns}
-            getRowId={(row) => row.id}
-            paginationMode="server"
-            rowCount={totalRows}
-            disableRowSelectionOnClick
-            autoHeight
-            hideFooterSelectedRowCount
-            pageSizeOptions={[10]}
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-          />
+          <>
+            <Typography variant="body2" color="textSecondary">
+              Debug: Notices count: {notices.length}
+            </Typography>
+            <DataGrid
+              rows={notices}
+              columns={columns}
+              getRowId={(row) => row.id}
+              pagination
+              disableRowSelectionOnClick
+              autoHeight
+              hideFooterSelectedRowCount
+              pageSizeOptions={[10, 25, 50]}
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+            />
+          </>
         )}
       </Box>
     </Container>

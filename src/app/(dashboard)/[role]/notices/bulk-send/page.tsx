@@ -48,7 +48,7 @@ interface NoticeType {
   org_id: string;
   name: string;
   description: string | null;
-  dynamic_schema: Record<string, SchemaField>;
+  dynamic_schema?: Record<string, SchemaField>;
   created_at: string;
   assigned_to: string | null;
 }
