@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store";
@@ -20,7 +20,7 @@ import {
 import { useSnackbar } from "notistack";
 import noticeApiClient from "@/services/apiClients/noticeApiClient";
 import { getTokenFromCookie } from "@/services/userService";
-import { Notice } from "@/types/noticeTypesInterface"; // Adjust import based on your project structure
+import { Notice } from "@/types/noticeTypesInterface";
 
 interface ApiResponse {
   success: boolean;
@@ -33,6 +33,7 @@ export default function EditNoticePage() {
   const { id } = useParams();
   const dispatch = useDispatch<AppDispatch>();
   const { enqueueSnackbar } = useSnackbar();
+  const router = useRouter();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -50,10 +51,10 @@ export default function EditNoticePage() {
         });
         console.log("API Response:", response.data);
 
-        const fetchedNotice = response.data.data; // Extract the nested data object
+        const fetchedNotice = response.data.data;
         if (!fetchedNotice.dynamic_data) {
           console.warn("No dynamic_data in response:", fetchedNotice);
-          fetchedNotice.dynamic_data = {}; // Default to empty object
+          fetchedNotice.dynamic_data = {};
         }
 
         setNotice(fetchedNotice);
@@ -73,10 +74,8 @@ export default function EditNoticePage() {
     value: string
   ) => {
     const parsedValue: string | number | boolean = value;
-    // Add type parsing if schema is available later; for now, keep as string
     setDynamicData((prev) => ({ ...prev, [fieldName]: parsedValue }));
 
-    // Basic required check based on existing data
     if (notice?.dynamic_data && fieldName in notice.dynamic_data && !value) {
       setErrors((prev) => ({ ...prev, [fieldName]: "This field is required" }));
     } else {
@@ -127,6 +126,10 @@ export default function EditNoticePage() {
     }
   };
 
+  const handleCancel = () => {
+    router.push("/admin/notices");
+  };
+
   if (loading) return <Typography>Loading...</Typography>;
   if (!notice) return <Typography>Notice not found.</Typography>;
 
@@ -165,20 +168,24 @@ export default function EditNoticePage() {
           Object.keys(notice.dynamic_data).map((fieldName) => (
             <TextField
               key={fieldName}
-              label={fieldName} // Use fieldName as label since schema is missing
+              label={fieldName}
               value={dynamicData[fieldName] || ""}
               onChange={(e) => handleDynamicFieldChange(fieldName, e.target.value)}
               error={!!errors[fieldName]}
               helperText={errors[fieldName]}
-              type="text" // Default to text; adjust if types are known later
-               required={!!notice.dynamic_data && fieldName in notice.dynamic_data} // Assume required if present
+              type="text"
+              required={!!notice.dynamic_data && fieldName in notice.dynamic_data}
               disabled={loading}
               fullWidth
             />
           ))}
 
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-          <Button variant="outlined" href="/admin/notices" disabled={loading}>
+          <Button
+            variant="outlined"
+            onClick={handleCancel} // Use onClick with handleCancel
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button
