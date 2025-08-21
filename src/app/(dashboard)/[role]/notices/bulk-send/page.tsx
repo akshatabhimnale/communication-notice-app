@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Box,
   Button,
@@ -12,18 +13,16 @@ import {
   Typography,
   Skeleton,
 } from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import { AppDispatch, RootState } from "@/store";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchNoticesThunk } from "@/store/slices/noticeSlice";
+import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import noticeApiClient from "@/services/apiClients/noticeApiClient";
 import { getTokenFromCookie, clearTokenCookie } from "@/services/userService";
 import { AxiosError } from "axios";
 import { fetchNoticeTypesWithTransformedSchemas } from "@/services/noticeService";
 import { fetchAllUsers } from "@/services/userService";
-import { SchemaField } from "@/types/noticeTypesInterface";
+import { SchemaField, PaginatedNoticeResponse } from "@/types/noticeTypesInterface";
 import { usePathname } from "next/navigation";
-import { useSnackbar } from "notistack"; // Import useSnackbar
+import { useSnackbar } from "notistack";
+import { Notice } from "@/types/noticeTypesInterface";
 
 interface User {
   id: string;
@@ -53,10 +52,13 @@ interface NoticeType {
   assigned_to: string | null;
 }
 
+
 const BulkSend: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const { notices, loading, error } = useSelector((state: RootState) => state.notice);
   const pathname = usePathname();
+  const { enqueueSnackbar } = useSnackbar();
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [selectedNoticeType, setSelectedNoticeType] = useState<string>("");
   const [selectedBatchName, setSelectedBatchName] = useState<string>("");
@@ -64,8 +66,8 @@ const BulkSend: React.FC = () => {
   const [noticeTypes, setNoticeTypes] = useState<NoticeType[]>([]);
   const [filteredNoticeTypes, setFilteredNoticeTypes] = useState<NoticeType[]>([]);
   const [batchNames, setBatchNames] = useState<string[]>([]);
-  const [paginationModel, setPaginationModel] = useState({ pageSize: 10, page: 0 });
-  const { enqueueSnackbar } = useSnackbar(); // Initialize useSnackbar
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
+  const [totalRows, setTotalRows] = useState(0);
 
   // Fetch current user ID for non-admin users
   useEffect(() => {
@@ -84,13 +86,13 @@ const BulkSend: React.FC = () => {
           console.error("Error fetching current user:", err);
           if (err instanceof AxiosError && err.response?.status === 401) {
             clearTokenCookie();
-            throw new Error("Authentication failed. Please log in again.");
+            enqueueSnackbar("Authentication failed. Please log in again.", { variant: "error" });
           }
         }
       };
       fetchCurrentUser();
     }
-  }, [pathname]);
+  }, [pathname, enqueueSnackbar]);
 
   // Fetch all users (only for admin)
   useEffect(() => {
@@ -133,9 +135,7 @@ const BulkSend: React.FC = () => {
   // Filter notice types based on selected user
   useEffect(() => {
     if (selectedUserId) {
-      const filtered = noticeTypes.filter(
-        (type) => type.assigned_to === selectedUserId
-      );
+      const filtered = noticeTypes.filter((type) => type.assigned_to === selectedUserId);
       setFilteredNoticeTypes(filtered);
       setSelectedNoticeType("");
       setBatchNames([]);
@@ -158,16 +158,19 @@ const BulkSend: React.FC = () => {
       }
       const token = getTokenFromCookie();
       if (!token) {
-        throw new Error("No authentication token found. Please log in.");
+        enqueueSnackbar("No authentication token found. Please log in.", { variant: "error" });
+        return;
       }
       try {
         const params = { notice_type: selectedNoticeType };
         const queryString = new URLSearchParams(params).toString();
         console.log(`Fetching batch names with URL: /bulk-notices/batch-names/?${queryString}`);
-        const response = await noticeApiClient.get<{ success: boolean; data: { batch_names: string[] }; errors: object; meta: object }>(
-          `/bulk-notices/batch-names/?${queryString}`
-        );
-        console.log("Batch names response:", response.data);
+        const response = await noticeApiClient.get<{
+          success: boolean;
+          data: { batch_names: string[] };
+          errors: object;
+          meta: object;
+        }>(`/bulk-notices/batch-names/?${queryString}`);
         const batchNamesData = response.data.data?.batch_names || [];
         if (batchNamesData.length === 0) {
           console.warn("No batch names found for the selected notice type.");
@@ -176,35 +179,51 @@ const BulkSend: React.FC = () => {
         setSelectedBatchName("");
       } catch (err: unknown) {
         console.error("Error fetching batch names:", err);
-        if (err instanceof AxiosError) {
-          if (err.response?.status === 401) {
-            clearTokenCookie();
-            throw new Error("Authentication failed. Please log in again.");
-          }
-          console.error("API Error:", err.response?.data);
-          setBatchNames([]); // Fallback to empty array on error
+        if (err instanceof AxiosError && err.response?.status === 401) {
+          clearTokenCookie();
+          enqueueSnackbar("Authentication failed. Please log in again.", { variant: "error" });
         }
-        setBatchNames([]); // Fallback to empty array on unexpected error
+        setBatchNames([]);
       }
     };
     fetchBatchNames();
-  }, [selectedNoticeType]);
+  }, [selectedNoticeType, enqueueSnackbar]);
 
-  // Fetch notices with filters
+  // Fetch notices with filters and pagination
+  const loadNotices = useCallback(
+    async (page: number) => {
+      setInitialLoading(true);
+      setError(null);
+      try {
+        const params: Record<string, unknown> = { page: page + 1 }; // API page is 1-based
+        if (selectedUserId) params.user_id = selectedUserId;
+        if (selectedNoticeType) params.notice_type = selectedNoticeType;
+        if (selectedBatchName) params.batch_name = selectedBatchName;
+
+        const response = await noticeApiClient.get<PaginatedNoticeResponse>("/notices/", { params });
+        if (!Array.isArray(response.data.results)) {
+          throw new Error("Invalid data format. Expected an array in results.");
+        }
+        setNotices(response.data.results);
+        setTotalRows(response.data.count);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load notices");
+      } finally {
+        setInitialLoading(false);
+      }
+    },
+    [selectedUserId, selectedNoticeType, selectedBatchName]
+  );
+
+  // Reset page to 0 when filters change
   useEffect(() => {
-    const params: Record<string, string> = {};
-    if (selectedUserId) params["user_id"] = selectedUserId;
-    if (selectedNoticeType) params["notice_type"] = selectedNoticeType;
-    if (selectedBatchName) params["batch_name"] = selectedBatchName;
+    setPaginationModel((prev) => ({ ...prev, page: 0 }));
+  }, [selectedUserId, selectedNoticeType, selectedBatchName]);
 
-    dispatch(fetchNoticesThunk(params))
-      .then((res) => {
-        console.log("Fetched notices:", res.payload);
-      })
-      .catch((err) => {
-        console.error("Error fetching notices:", err);
-      });
-  }, [dispatch, selectedUserId, selectedNoticeType, selectedBatchName]);
+  // Fetch notices when page or filters change
+  useEffect(() => {
+    loadNotices(paginationModel.page);
+  }, [loadNotices, paginationModel.page]);
 
   const handleSubmit = async () => {
     const token = getTokenFromCookie();
@@ -227,6 +246,8 @@ const BulkSend: React.FC = () => {
       });
       enqueueSnackbar(response.data.message || "Bulk send initiated successfully.", { variant: "success" });
       console.log("API Response:", response.data);
+      // Refetch notices to reflect any changes
+      loadNotices(paginationModel.page);
     } catch (err) {
       console.error("Error submitting bulk send:", err);
       if (err instanceof AxiosError) {
@@ -249,7 +270,7 @@ const BulkSend: React.FC = () => {
       width: 80,
       renderCell: (params) => {
         const index = notices.findIndex((notice) => notice.id === params.row.id);
-        return <span>{index + 1}</span>;
+        return <span>{paginationModel.page * paginationModel.pageSize + index + 1}</span>;
       },
     },
     {
@@ -274,7 +295,7 @@ const BulkSend: React.FC = () => {
       field: "created_at",
       headerName: "Created At",
       flex: 1,
-      renderCell: (params) => {
+      renderCell: (params: GridRenderCellParams) => {
         if (params.row.created_at || params.row.createdAt) {
           try {
             const date = new Date(params.row.created_at || params.row.createdAt);
@@ -299,7 +320,7 @@ const BulkSend: React.FC = () => {
       />
       {[...Array(paginationModel.pageSize)].map((_, rowIndex) => (
         <Box key={rowIndex} sx={{ display: "flex", gap: 1, mb: 1 }}>
-          {[...Array(6)].map((_, colIndex) => (
+          {[...Array(5)].map((_, colIndex) => (
             <Skeleton
               key={colIndex}
               variant="rectangular"
@@ -311,6 +332,19 @@ const BulkSend: React.FC = () => {
       ))}
     </Box>
   );
+
+  if (error) {
+    return (
+      <Container>
+        <Box sx={{ textAlign: "center", mt: 4 }}>
+          <Typography color="error">{error}</Typography>
+          <Button variant="contained" onClick={() => loadNotices(paginationModel.page)} sx={{ mt: 2 }}>
+            Retry
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -379,34 +413,30 @@ const BulkSend: React.FC = () => {
         </Box>
         <Box sx={{ display: "flex", gap: "30px" }}>
           <TextField
-            label="From Notice Id *"
+            label="From Notice Id"
             variant="filled"
-            value="From ex. IN12-1234"
             InputProps={{ disableUnderline: true }}
             sx={{ flex: 1 }}
           />
           <TextField
-            label="To Notice Id *"
+            label="To Notice Id"
             variant="filled"
-            value="To ex. IN12-2345"
             InputProps={{ disableUnderline: true }}
-            sx={{ flex: "1" }}
+            sx={{ flex: 1 }}
           />
           <TextField
             label="Except Notice Id"
             variant="filled"
-            value="Except ex. IN12-23,IN12-34,IN12-45"
             InputProps={{ disableUnderline: true }}
             sx={{ flex: 1 }}
           />
         </Box>
         <Box sx={{ display: "flex", gap: "30px" }}>
           <FormControl fullWidth sx={{ flex: 1 }}>
-            <InputLabel>Schedule Date :</InputLabel>
+            <InputLabel>Schedule Date</InputLabel>
             <TextField
               type="date"
               variant="filled"
-              defaultValue="2025-07-23"
               InputProps={{ disableUnderline: true }}
             />
           </FormControl>
@@ -415,27 +445,26 @@ const BulkSend: React.FC = () => {
           Submit
         </Button>
         <Box sx={{ width: "100%", mt: 4 }}>
-          {error && <Typography color="error">Error: {error}</Typography>}
-          {loading ? (
+          {initialLoading ? (
             <DataGridSkeleton />
+          ) : notices.length === 0 ? (
+            <Typography textAlign="center" color="text.secondary">
+              No notices available
+            </Typography>
           ) : (
-            <>
-              <Typography variant="body2" color="textSecondary">
-                Debug: Notices count: {notices.length}
-              </Typography>
-              <DataGrid
-                rows={notices}
-                columns={columns}
-                getRowId={(row) => row.id}
-                pagination
-                disableRowSelectionOnClick
-                autoHeight
-                hideFooterSelectedRowCount
-                pageSizeOptions={[10, 25, 50]}
-                paginationModel={paginationModel}
-                onPaginationModelChange={setPaginationModel}
-              />
-            </>
+            <DataGrid
+              rows={notices}
+              columns={columns}
+              getRowId={(row) => row.id}
+              paginationMode="server"
+              rowCount={totalRows}
+              disableRowSelectionOnClick
+              autoHeight
+              hideFooterSelectedRowCount
+              pageSizeOptions={[10]}
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+            />
           )}
         </Box>
       </Box>
