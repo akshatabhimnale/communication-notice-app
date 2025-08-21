@@ -257,14 +257,19 @@ export const fetchNoticeTypesWithTransformedSchemas = async (
 ): Promise<Omit<PaginatedResponse, 'results'> & { results: TransformedNoticeType[] }> => {
   const response = await fetchNoticeTypes(page);
   const transformedResults = response.results.map((noticeType) => {
+    // Some notice types might not have dynamic_schema in the new flow
+    if (!noticeType.dynamic_schema) {
+      return noticeType as unknown as TransformedNoticeType;
+    }
+
     const dynamicSchemaForTransform: DynamicSchema = {
       fields: noticeType.dynamic_schema as unknown as Record<string, { type: string; label: string; required: boolean }>
     };
-    
+
     return {
       ...noticeType,
       dynamic_schema: transformDynamicSchema(dynamicSchemaForTransform),
-    };
+    } as TransformedNoticeType;
   });
   return {
     ...response,
@@ -457,167 +462,14 @@ export const uploadSchemaFromCsv = async (
   }
 };
 
-const validateCsvHeaders = (
-  headers: string[],
-  dynamicSchema: Record<string, SchemaField>
-): { isValid: boolean; missingFields: string[]; extraFields: string[] } => {
-  const schemaFields = Object.keys(dynamicSchema);
-  const lowerCaseSchemaFields = schemaFields.map((field) => field.toLowerCase());
-  const lowerCaseHeaders = headers.map((header) => header.toLowerCase());
-
-  const missingFields = schemaFields.filter(
-    (field) =>
-      dynamicSchema[field].required &&
-      !lowerCaseHeaders.includes(field.toLowerCase())
-  );
-  const extraFields = headers.filter(
-    (header) => !lowerCaseSchemaFields.includes(header.toLowerCase())
-  );
-
-  console.log("CSV Headers:", headers);
-  console.log("Dynamic Schema:", JSON.stringify(dynamicSchema, null, 2));
-  console.log("Schema Fields:", schemaFields);
-  console.log("Missing Required Fields:", missingFields);
-  console.log("Extra Fields:", extraFields);
-
-  return {
-    isValid: missingFields.length === 0 && extraFields.length === 0,
-    missingFields,
-    extraFields,
-  };
-};
-
+// New bulk notices API: upload file directly to create bulk record
 export const bulkCreateNotices = async (
   file: File,
   noticeTypeId: string,
   createdBy: string,
-  noticeTypeSchema: Record<string, SchemaField>,
-  batchName?: string
+  batchName: string,
+  status: string = "pending"
 ): Promise<BulkUploadResponse> => {
-  const token = getTokenFromCookie();
-  if (!token) {
-    throw new Error("No authentication token found. Please log in.");
-  }
-
-  console.log("Input Notice Type Schema:", JSON.stringify(noticeTypeSchema, null, 2));
-
-  try {
-    const text = await file.text();
-    const lines = text.split("\n").filter((line) => line.trim());
-    if (lines.length < 2) {
-      throw new Error("CSV is empty or has no data rows");
-    }
-
-    const headers = lines[0]
-      .split(",")
-      .map((h) => h.trim().replace(/^"|"$/g, ""));
-    if (headers.some((h) => !h || h.includes(","))) {
-      throw new Error("Invalid CSV headers: Empty or contain commas");
-    }
-
-    const { isValid, missingFields, extraFields } = validateCsvHeaders(
-      headers,
-      noticeTypeSchema
-    );
-    if (!isValid) {
-      throw new Error(
-        `CSV headers do not match notice type schema. Missing required fields: ${missingFields.join(
-          ", "
-        )}. Extra fields: ${extraFields.join(", ")}`
-      );
-    }
-
-    const createdNotices: Notice[] = [];
-    const failedRows: Array<{ row: number; error: string }> = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const row = lines[i].split(",").map((v) => v.trim());
-      if (row.length !== headers.length) {
-        failedRows.push({ row: i + 1, error: "Invalid number of columns" });
-        continue;
-      }
-
-      const dynamicData: Record<string, unknown> = {};
-      headers.forEach((header, index) => {
-        const schemaField = Object.keys(noticeTypeSchema).find(
-          (field) => field.toLowerCase() === header.toLowerCase()
-        );
-        if (schemaField) {
-          dynamicData[schemaField] = row[index];
-        }
-      });
-
-      const payload: CreateNoticeRequest = {
-        notice_type: noticeTypeId,
-        dynamic_data: dynamicData as Record<string, string | number | boolean>,
-        created_by: createdBy,
-        status: "active",
-        priority: "medium",
-      };
-
-      // Add batch_name if provided
-      if (batchName && batchName.trim()) {
-        payload.batch_name = batchName.trim();
-      }
-
-      console.log(`Sending payload for row ${i + 1}:`, JSON.stringify(payload, null, 2));
-
-      try {
-        const response = await noticeApiClient.post<Notice>("/notices/", payload);
-        createdNotices.push(response.data);
-      } catch (err) {
-        const errorMessage =
-          err instanceof AxiosError
-            ? `API Error ${err.response?.status}: ${JSON.stringify(err.response?.data)}`
-            : "Unexpected error";
-        failedRows.push({ row: i + 1, error: errorMessage });
-      }
-    }
-
-    return {
-      success: createdNotices.length > 0,
-      data: {
-        created: createdNotices,
-        failed: failedRows,
-      },
-      errors: failedRows.length > 0 ? { failedRows } : {},
-      meta: {},
-    };
-  } catch (err: unknown) {
-    if (err instanceof AxiosError) {
-      console.error("Full error:", err.response?.data, err.config);
-      if (err.response?.status === 401) {
-        clearTokenCookie();
-        throw new Error(
-          "Authentication failed. Your session may have expired. Please log in again."
-        );
-      }
-      throw new Error(
-        err.response
-          ? `API Error ${err.response.status}: ${JSON.stringify(
-              err.response.data
-            )}`
-          : "Network Error: Unable to reach the server"
-      );
-    }
-    throw new Error(
-      err instanceof Error ? err.message : "An unexpected error occurred"
-    );
-  }
-};
-
-// New bulk upload API service - Step 1: Upload file and get dynamic data
-export const bulkUploadFile = async (
-  file: File,
-  noticeTypeId: string
-): Promise<{
-  success: boolean;
-  data: Array<{
-    dynamic_data: Array<Record<string, unknown>>;
-  }>;
-  errors: Record<string, unknown>;
-  meta: Record<string, unknown>;
-}> => {
   const token = getTokenFromCookie();
   if (!token) {
     throw new Error("No authentication token found. Please log in.");
@@ -625,11 +477,14 @@ export const bulkUploadFile = async (
 
   try {
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("notice_type_id", noticeTypeId);
+    formData.append("filename", file);
+    formData.append("notice_type", noticeTypeId);
+    formData.append("created_by", createdBy);
+    formData.append("batch_name", batchName);
+    if (status) formData.append("status", status);
 
     const response = await noticeApiClient.post(
-      "/notices/bulk-upload/",
+      "/bulk-notices/",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
@@ -639,7 +494,7 @@ export const bulkUploadFile = async (
     return response.data;
   } catch (err: unknown) {
     if (err instanceof AxiosError) {
-      console.error("Bulk upload error:", err.response?.data, err.config);
+      console.error("Bulk notices upload error:", err.response?.data, err.config);
       if (err.response?.status === 401) {
         clearTokenCookie();
         throw new Error(
@@ -654,7 +509,7 @@ export const bulkUploadFile = async (
           : "Network Error: Unable to reach the server"
       );
     }
-    throw new Error("An unexpected error occurred during bulk upload");
+    throw new Error("An unexpected error occurred during bulk notices upload");
   }
 };
 
@@ -752,7 +607,7 @@ export const checkBatchNameAvailability = async (
   }
 
   try {
-    const searchUrl = `/notices/batch-names/?search=${encodeURIComponent(batchName)}`;
+    const searchUrl = `/bulk-notices/batch-names/?search=${encodeURIComponent(batchName)}`;
     console.log("🔍 Making API call to:", searchUrl);
     console.log("🔍 Full URL will be:", `${noticeApiClient.defaults.baseURL}${searchUrl}`);
     

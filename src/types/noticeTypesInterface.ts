@@ -140,7 +140,8 @@ export interface TransformedNoticeType {
   org_id: string;
   name: string;
   description: string | null;
-  dynamic_schema: Record<string, SchemaField>;
+  // Optional because new bulk notices flow doesn't require dynamic schema
+  dynamic_schema?: Record<string, SchemaField>;
   created_at: string;
   assigned_to: string | null;
 }

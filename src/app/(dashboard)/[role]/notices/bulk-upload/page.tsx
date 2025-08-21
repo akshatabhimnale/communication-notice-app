@@ -17,8 +17,7 @@ import {
   Chip,
 } from "@mui/material";
 import {
-  bulkUploadFile,
-  createIndividualNotice,
+  bulkCreateNotices,
   fetchNoticeTypesWithTransformedSchemas,
 } from "@/services/noticeService";
 import { fetchUserProfile } from "@/services/userService";
@@ -261,78 +260,19 @@ const BulkUpload: React.FC = () => {
 
     setLoading(true);
     try {
-      // Step 1: Upload file and get dynamic data
-      const bulkUploadResponse = await bulkUploadFile(
+      // New flow: send file directly to bulk notices API
+      await bulkCreateNotices(
         validatedFile,
         selectedNoticeType,
+        finalUserId,
+        batchName,
+        "pending"
       );
 
-      console.warn("Bulk upload response:", bulkUploadResponse);
-      if (!bulkUploadResponse.success) {
-        throw new Error("Failed to process the uploaded file");
-      }
-
-      const dynamicDataArray = bulkUploadResponse.data[0]?.dynamic_data;
-
-      console.log("Dynamic data array:", dynamicDataArray);
-      console.log("First item structure:", dynamicDataArray?.[0]);
-
-      if (!dynamicDataArray || dynamicDataArray.length === 0) {
-        throw new Error("No valid data found in the uploaded file");
-      }
-
-      // Step 2: Create notices one by one
-      let createdCount = 0;
-      let failedCount = 0;
-      const failedErrors: string[] = [];
-
-      for (let i = 0; i < dynamicDataArray.length; i++) {
-        try {
-          console.log(`Creating notice ${i + 1} with data:`, dynamicDataArray[i]);
-          await createIndividualNotice(
-            selectedNoticeType,
-            dynamicDataArray[i],
-            finalUserId,
-            batchName
-          );
-          createdCount++;
-        } catch (error) {
-          failedCount++;
-          const errorMsg = error instanceof Error ? error.message : "Unknown error";
-          console.error(`Failed to create notice ${i + 1}:`, errorMsg);
-          failedErrors.push(`Row ${i + 1}: ${errorMsg}`);
-        }
-      }
-
-      // Show results
-      if (createdCount > 0) {
-        const successMessage = `Successfully created ${createdCount} notices.`;
-        const failureMessage =
-          failedCount > 0
-            ? ` ${failedCount} failed: ${failedErrors
-                .slice(0, 3)
-                .join("; ")}${failedErrors.length > 3 ? "..." : ""}`
-            : "";
-
-        enqueueSnackbar(successMessage + failureMessage, {
-          variant: createdCount > failedCount ? "success" : "warning",
-          autoHideDuration: 5000,
-        });
-
-        if (failedCount === 0) {
-          resetForm();
-        }
-      } else {
-        enqueueSnackbar(
-          `All ${failedCount} notices failed to create: ${failedErrors
-            .slice(0, 2)
-            .join("; ")}`,
-          {
-            variant: "error",
-            autoHideDuration: 5000,
-          },
-        );
-      }
+      enqueueSnackbar("Bulk upload submitted successfully.", {
+        variant: "success",
+      });
+      resetForm();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "An unexpected error occurred during upload.";
