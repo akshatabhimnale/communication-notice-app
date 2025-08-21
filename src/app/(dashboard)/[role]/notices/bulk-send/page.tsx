@@ -52,7 +52,6 @@ interface NoticeType {
   assigned_to: string | null;
 }
 
-
 const BulkSend: React.FC = () => {
   const pathname = usePathname();
   const { enqueueSnackbar } = useSnackbar();
@@ -68,6 +67,7 @@ const BulkSend: React.FC = () => {
   const [batchNames, setBatchNames] = useState<string[]>([]);
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
   const [totalRows, setTotalRows] = useState(0);
+  const [scheduleDate, setScheduleDate] = useState<string>("");
 
   // Fetch current user ID for non-admin users
   useEffect(() => {
@@ -349,27 +349,27 @@ const BulkSend: React.FC = () => {
   return (
     <Container>
       <Box sx={{ padding: "40px", display: "flex", flexDirection: "column", gap: "30px", width: "100%", maxWidth: "1200px", margin: "0 auto" }}>
-        {pathname?.startsWith("/admin") && (
-          <FormControl fullWidth>
-            <InputLabel>Select User*</InputLabel>
-            <Select
-              label="Select User*"
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value as string)}
-            >
-              <MenuItem value="" disabled>
-                Select User
-              </MenuItem>
-              {users.map((user) => (
-                <MenuItem key={user.id} value={user.id}>
-                  {`${user.first_name} ${user.last_name} (${user.email})`}
+        <Box sx={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+          {pathname?.startsWith("/admin") && (
+            <FormControl sx={{ flex: 1, minWidth: "200px" }}>
+              <InputLabel>Select User*</InputLabel>
+              <Select
+                label="Select User*"
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value as string)}
+              >
+                <MenuItem value="" disabled>
+                  Select User
                 </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-        <Box sx={{ display: "flex", gap: "30px" }}>
-          <FormControl fullWidth sx={{ flex: 1 }}>
+                {users.map((user) => (
+                  <MenuItem key={user.id} value={user.id}>
+                    {`${user.first_name} ${user.last_name} (${user.email})`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+          <FormControl sx={{ flex: 1, minWidth: "200px" }}>
             <InputLabel>Select Notice Type*</InputLabel>
             <Select
               label="Select Notice Type*"
@@ -387,7 +387,7 @@ const BulkSend: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl fullWidth sx={{ flex: 1 }}>
+          <FormControl sx={{ flex: 1, minWidth: "200px" }}>
             <InputLabel>Select Batch Name</InputLabel>
             <Select
               label="Select Batch Name"
@@ -411,39 +411,47 @@ const BulkSend: React.FC = () => {
             </Select>
           </FormControl>
         </Box>
-        <Box sx={{ display: "flex", gap: "30px" }}>
+        <Box sx={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
           <TextField
             label="From Notice Id"
             variant="filled"
             InputProps={{ disableUnderline: true }}
-            sx={{ flex: 1 }}
+            sx={{ flex: 1, minWidth: "150px" }}
           />
           <TextField
             label="To Notice Id"
             variant="filled"
             InputProps={{ disableUnderline: true }}
-            sx={{ flex: 1 }}
+            sx={{ flex: 1, minWidth: "150px" }}
           />
           <TextField
             label="Except Notice Id"
             variant="filled"
             InputProps={{ disableUnderline: true }}
-            sx={{ flex: 1 }}
+            sx={{ flex: 1, minWidth: "150px" }}
           />
-        </Box>
-        <Box sx={{ display: "flex", gap: "30px" }}>
-          <FormControl fullWidth sx={{ flex: 1 }}>
-            <InputLabel>Schedule Date</InputLabel>
+          <FormControl sx={{ flex: 1, minWidth: "150px" }}>
             <TextField
               type="date"
               variant="filled"
+              label="Schedule Date"
+              value={scheduleDate}
+              onChange={(e) => setScheduleDate(e.target.value)}
               InputProps={{ disableUnderline: true }}
+              InputLabelProps={{ shrink: true }}
+              sx={{
+                "& .MuiInputBase-input": {
+                  paddingTop: "20px",
+                },
+              }}
             />
           </FormControl>
         </Box>
-        <Button variant="contained" sx={{ width: "200px" }} onClick={handleSubmit}>
-          Submit
-        </Button>
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button variant="contained" sx={{ width: "200px" }} onClick={handleSubmit}>
+            Submit
+          </Button>
+        </Box>
         <Box sx={{ width: "100%", mt: 4 }}>
           {initialLoading ? (
             <DataGridSkeleton />
